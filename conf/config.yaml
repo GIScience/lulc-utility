@@ -1,0 +1,21 @@
+sentinel_hub:
+  api:
+    id: ${oc.env:SENTINELHUB_API_ID}
+    secret: ${oc.env:SENTINELHUB_API_SECRET}
+
+cache:
+  dir: ../cache
+
+data:
+  dir: ../data
+  descriptor:
+    area: v1
+    imagery: v1
+    labels: v1
+
+model:
+  num_channels: 9
+
+hydra:
+  run:
+    dir: ../outputs/${hydra.job.name}/${now:%Y-%m-%d_%H-%M-%S}

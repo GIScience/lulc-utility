@@ -1,3 +1,10 @@
 cache/**
+outputs/**
 .tiff
 .tif
+
+.pytest_cache
+**/lightning_logs
+**/ohsome_log
+
+.idea/**
