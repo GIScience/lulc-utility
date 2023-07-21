@@ -2,7 +2,9 @@ from pathlib import Path
 
 import hydra
 import lightning.pytorch as pl
+import torch
 from omegaconf import DictConfig
+from pytorch_lightning.loggers import NeptuneLogger
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
@@ -13,6 +15,15 @@ from lulc.model.model import SegFormerModule
 
 @hydra.main(version_base=None, config_path='../conf', config_name='config')
 def train(cfg: DictConfig) -> None:
+    torch.set_float32_matmul_precision(cfg.model.matmul_precision)
+
+    neptune_logger = NeptuneLogger(
+        project=cfg.neptune.project,
+        api_key=cfg.neptune.api_token,
+        log_model_checkpoints=False,
+    )
+    neptune_logger.log_hyperparams(params=cfg.model)
+
     dataset = AreaDataset(
         area_descriptor_ver=cfg.data.descriptor.area,
         label_descriptor_ver=cfg.data.descriptor.labels,
@@ -31,9 +42,14 @@ def train(cfg: DictConfig) -> None:
         ])
     )
 
-    model = SegFormerModule(num_channels=cfg.model.num_channels, labels=dataset.labels)
-    train_loader = DataLoader(dataset)
-    trainer = pl.Trainer(max_epochs=1)
+    model = SegFormerModule(num_channels=cfg.model.num_channels,
+                            labels=dataset.labels,
+                            variant=cfg.model.variant,
+                            lr=cfg.model.lr)
+
+    train_loader = DataLoader(dataset, batch_size=cfg.model.batch_size)
+    trainer = pl.Trainer(logger=neptune_logger,
+                         max_epochs=cfg.model.max_epochs)
     trainer.fit(model=model, train_dataloaders=train_loader)
 
 

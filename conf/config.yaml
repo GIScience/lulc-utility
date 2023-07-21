@@ -1,7 +1,5 @@
-sentinel_hub:
-  api:
-    id: ${oc.env:SENTINELHUB_API_ID}
-    secret: ${oc.env:SENTINELHUB_API_SECRET}
+defaults:
+  - model: baseline
 
 cache:
   dir: ../cache
@@ -13,9 +11,17 @@ data:
     imagery: v1
     labels: v1
 
-model:
-  num_channels: 9
-
 hydra:
   run:
     dir: ../outputs/${hydra.job.name}/${now:%Y-%m-%d_%H-%M-%S}
+
+neptune:
+  project: ${oc.env:NEPTUNE_PROJECT_ID}
+  api_token: ${oc.env:NEPTUNE_PROJECT_API_TOKEN}
+
+sentinel_hub:
+  api:
+    id: ${oc.env:SENTINELHUB_API_ID}
+    secret: ${oc.env:SENTINELHUB_API_SECRET}
+
+
