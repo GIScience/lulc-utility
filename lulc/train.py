@@ -11,16 +11,20 @@ from torchvision import transforms
 from lulc.data.dataset import AreaDataset
 from lulc.data.tx import MinMaxScaling, MaxScaling, Stack, ReclassifyMerge, ToTensor, NanToNum
 from lulc.model.model import SegFormerModule
+from coolname import generate_slug
 
 
 @hydra.main(version_base=None, config_path='../conf', config_name='config')
 def train(cfg: DictConfig) -> None:
     torch.set_float32_matmul_precision(cfg.model.matmul_precision)
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     neptune_logger = NeptuneLogger(
+        name=generate_slug(pattern=3),
         project=cfg.neptune.project,
         api_key=cfg.neptune.api_token,
         log_model_checkpoints=False,
+        mode=cfg.neptune.mode
     )
     neptune_logger.log_hyperparams(params=cfg.model)
 
@@ -45,7 +49,8 @@ def train(cfg: DictConfig) -> None:
     model = SegFormerModule(num_channels=cfg.model.num_channels,
                             labels=dataset.labels,
                             variant=cfg.model.variant,
-                            lr=cfg.model.lr)
+                            lr=cfg.model.lr,
+                            device=device)
 
     train_loader = DataLoader(dataset, batch_size=cfg.model.batch_size)
     trainer = pl.Trainer(logger=neptune_logger,

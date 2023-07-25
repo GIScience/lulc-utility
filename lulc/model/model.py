@@ -2,7 +2,9 @@ from typing import List, Any
 
 import lightning.pytorch as pl
 import torch
+import torch.nn.functional as F
 from torch.optim import Adam
+from torchmetrics import MeanMetric, JaccardIndex, Accuracy, F1Score, Precision, Recall
 from transformers import SegformerForSemanticSegmentation, \
     SegformerConfig
 
@@ -42,7 +44,7 @@ MODEL_VARIANTS = {
 
 class SegFormerModule(pl.LightningModule):
 
-    def __init__(self, num_channels: int, labels: List[str], variant: str, lr: float,
+    def __init__(self, num_channels: int, labels: List[str], variant: str, lr: float, device: torch.device,
                  *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         num_labels = len(labels)
@@ -62,19 +64,60 @@ class SegFormerModule(pl.LightningModule):
         self.model = SegformerForSemanticSegmentation(configuration)
         self.lr = lr
 
-        self.training_step_outputs = []
+        self.metrics = {
+            'train': {
+                'loss': MeanMetric().to(device),
+                'iou': JaccardIndex(task='multiclass', num_classes=num_labels).to(device),
+                'acc': Accuracy(task="multiclass", num_classes=num_labels).to(device),
+                'f1': F1Score(task='multiclass', num_classes=num_labels).to(device),
+                'precision': Precision(task='multiclass', num_classes=num_labels).to(device),
+                'recall': Recall(task='multiclass', num_classes=num_labels).to(device)
+            },
+            'val': {
+                'loss': MeanMetric().to(device),
+                'iou': JaccardIndex(task='multiclass', num_classes=num_labels).to(device),
+                'acc': Accuracy(task="multiclass", num_classes=num_labels).to(device),
+                'f1': F1Score(task='multiclass', num_classes=num_labels).to(device),
+                'precision': Precision(task='multiclass', num_classes=num_labels).to(device),
+                'recall': Recall(task='multiclass', num_classes=num_labels).to(device)
+            }
+        }
 
     def training_step(self, batch):
+        return self.__step(batch, phase='train')
+
+    def validation_step(self, batch):
+        return self.__step(batch, phase='val')
+
+    def __step(self, batch, phase):
         x, y = batch['x'], batch['y']
-        loss = self.model(x, y).loss
-        self.log('metrics/batch/loss', loss, prog_bar=False)
-        self.training_step_outputs.append(loss)
-        return loss
+        outputs = self.model(x, y)
+
+        up_logits = F.interpolate(outputs.logits, size=y.shape[-2:], mode="bilinear", align_corners=False)
+        y_pred = up_logits.argmax(dim=1)
+
+        self.metrics[phase]['loss'].update(outputs.loss)
+        self.log(f'{phase}/batch/loss', outputs.loss)
+
+        for metric_name, metric in self.metrics[phase].items():
+            if metric_name is not 'loss':
+                self.metrics[phase][metric_name].update(y_pred, y)
+
+        return outputs.loss
 
     def on_train_epoch_end(self):
-        loss = torch.stack(self.training_step_outputs).mean()
-        self.log('metrics/loss', loss)
-        self.training_step_outputs.clear()
+        return self.__on_epoch_end('train')
+
+    def on_validation_end(self):
+        return self.__on_epoch_end('val')
+
+    def __on_epoch_end(self, phase):
+        self.__log_metrics(phase)
+
+    def __log_metrics(self, phase):
+        for metric_name, metric in self.metrics[phase].items():
+            self.log(f'{phase}/epoch/{metric_name}', metric.compute())
+            metric.reset()
 
     def configure_optimizers(self):
         return Adam(self.parameters(), lr=self.lr)

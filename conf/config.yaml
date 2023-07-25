@@ -18,6 +18,7 @@ hydra:
 neptune:
   project: ${oc.env:NEPTUNE_PROJECT_ID}
   api_token: ${oc.env:NEPTUNE_PROJECT_API_TOKEN}
+  mode: ${oc.env:NEPTUNE_MODE}
 
 sentinel_hub:
   api:
