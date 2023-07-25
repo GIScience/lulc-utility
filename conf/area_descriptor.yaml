@@ -1,0 +1,13 @@
+area:
+  nuts_source: https://gisco-services.ec.europa.eu/distribution/v2/nuts/geojson/NUTS_RG_10M_2021_4326.geojson
+  nuts_id_col: NUTS_ID
+  split_mode: osm
+  timeframe:
+    start_date: 01-05-2023
+    end_date: 01-06-2023
+  target_nuts_ids:
+    - DE1
+    - DE2
+  output_dir: /tmp
+  osm:
+    zoom_level: 11
