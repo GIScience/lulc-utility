@@ -6,6 +6,8 @@ cache:
 
 data:
   dir: ../data
+  train_frac: 0.8
+  test_frac: 0.1
   descriptor:
     area: v1
     imagery: v1
