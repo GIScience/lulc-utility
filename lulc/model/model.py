@@ -64,16 +64,9 @@ class SegFormerModule(pl.LightningModule):
         self.model = SegformerForSemanticSegmentation(configuration)
         self.lr = lr
 
-        self.metrics = {
-            'train': {
-                'loss': MeanMetric().to(device),
-                'iou': JaccardIndex(task='multiclass', num_classes=num_labels).to(device),
-                'acc': Accuracy(task="multiclass", num_classes=num_labels).to(device),
-                'f1': F1Score(task='multiclass', num_classes=num_labels).to(device),
-                'precision': Precision(task='multiclass', num_classes=num_labels).to(device),
-                'recall': Recall(task='multiclass', num_classes=num_labels).to(device)
-            },
-            'val': {
+        self.metrics = {}
+        for phase in ['train', 'val', 'test']:
+            self.metrics[phase] = {
                 'loss': MeanMetric().to(device),
                 'iou': JaccardIndex(task='multiclass', num_classes=num_labels).to(device),
                 'acc': Accuracy(task="multiclass", num_classes=num_labels).to(device),
@@ -81,13 +74,15 @@ class SegFormerModule(pl.LightningModule):
                 'precision': Precision(task='multiclass', num_classes=num_labels).to(device),
                 'recall': Recall(task='multiclass', num_classes=num_labels).to(device)
             }
-        }
 
-    def training_step(self, batch):
+    def training_step(self, batch, *args):
         return self.__step(batch, phase='train')
 
-    def validation_step(self, batch):
+    def validation_step(self, batch, *args):
         return self.__step(batch, phase='val')
+
+    def test_step(self, batch, *args):
+        return self.__step(batch, phase='test')
 
     def __step(self, batch, phase):
         x, y = batch['x'], batch['y']
@@ -100,16 +95,19 @@ class SegFormerModule(pl.LightningModule):
         self.log(f'{phase}/batch/loss', outputs.loss)
 
         for metric_name, metric in self.metrics[phase].items():
-            if metric_name is not 'loss':
-                self.metrics[phase][metric_name].update(y_pred, y)
+            if metric_name != 'loss':
+                metric.update(y_pred, y)
 
         return outputs.loss
 
     def on_train_epoch_end(self):
         return self.__on_epoch_end('train')
 
-    def on_validation_end(self):
+    def on_validation_epoch_end(self):
         return self.__on_epoch_end('val')
+
+    def on_test_epoch_end(self):
+        return self.__on_epoch_end('test')
 
     def __on_epoch_end(self, phase):
         self.__log_metrics(phase)

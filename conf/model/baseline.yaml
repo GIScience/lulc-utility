@@ -2,6 +2,8 @@ num_channels: 9
 variant: MiT-b0
 max_epochs: -1
 lr: 0.001
-batch_size: 1
+batch_size: 4
 matmul_precision: high
 workers: 4
+early_stopping:
+  patience: 5

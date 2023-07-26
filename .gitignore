@@ -1,5 +1,7 @@
 cache/**
-outputs/**
+__pycache__/
+outputs/
+data/area/
 .tiff
 .tif
 
@@ -8,3 +10,5 @@ outputs/**
 **/ohsome_log
 
 .idea/**
+.neptune/**
+.ruff_cache

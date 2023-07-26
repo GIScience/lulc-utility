@@ -1,31 +1,33 @@
 import logging
+from functools import partial
 from pathlib import Path
 
 import hydra
 import lightning.pytorch as pl
 import torch
+from coolname import generate_slug
+from lightning.pytorch.callbacks import EarlyStopping
+from lightning.pytorch.loggers import NeptuneLogger
 from omegaconf import DictConfig
-from pytorch_lightning.loggers import NeptuneLogger
 from torch.utils.data import DataLoader, random_split
 from torchvision import transforms
 
-from lulc.data.dataset import AreaDataset
+from lulc.data.dataset import AreaDataset, random_crop_collate_fn, center_crop_collate_fn
 from lulc.data.tx import MinMaxScaling, MaxScaling, Stack, ReclassifyMerge, ToTensor, NanToNum
 from lulc.model.model import SegFormerModule
-from coolname import generate_slug
 
 log = logging.getLogger(__name__)
 
 
 @hydra.main(version_base=None, config_path='../conf', config_name='config')
 def train(cfg: DictConfig) -> None:
-    log.info('Model training initiated')
-
     torch.set_float32_matmul_precision(cfg.model.matmul_precision)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    run_name = generate_slug(pattern=3)
 
+    log.info(f'Model training initiated: {run_name}')
     neptune_logger = NeptuneLogger(
-        name=generate_slug(pattern=3),
+        name=run_name,
         project=cfg.neptune.project,
         api_key=cfg.neptune.api_token,
         log_model_checkpoints=False,
@@ -60,19 +62,13 @@ def train(cfg: DictConfig) -> None:
 
     log.info(f'Performing random dataset split (train: {train_size}, val: {val_size}, test: {test_size})')
     train_dataset, val_dataset, test_dataset = random_split(dataset, [train_size, val_size, test_size])
-    train_loader = DataLoader(train_dataset,
-                              batch_size=cfg.model.batch_size,
-                              pin_memory=True,
-                              num_workers=cfg.model.workers,
-                              shuffle=True)
-    val_loader = DataLoader(val_dataset,
-                            batch_size=cfg.model.batch_size,
-                            pin_memory=True,
-                            num_workers=cfg.model.workers)
-    test_loader = DataLoader(val_dataset,
-                             batch_size=cfg.model.batch_size,
-                             pin_memory=True,
-                             num_workers=cfg.model.workers)
+    loader_p = partial(DataLoader, batch_size=cfg.model.batch_size,
+                       pin_memory=True,
+                       num_workers=cfg.model.workers,
+                       persistent_workers=True)
+    train_loader = loader_p(dataset=train_dataset, shuffle=True, collate_fn=random_crop_collate_fn(cfg.data.crop.height, cfg.data.crop.width))
+    val_loader = loader_p(dataset=val_dataset, collate_fn=center_crop_collate_fn(cfg.data.crop.height, cfg.data.crop.width))
+    test_loader = loader_p(dataset=test_dataset, collate_fn=center_crop_collate_fn(cfg.data.crop.height, cfg.data.crop.width))
 
     log.info(f'Creating a model ({cfg.model.variant})')
     model = SegFormerModule(num_channels=cfg.model.num_channels,
@@ -82,14 +78,19 @@ def train(cfg: DictConfig) -> None:
                             device=device)
 
     log.info(f'Training model for {cfg.model.max_epochs} epochs')
-    trainer = pl.Trainer(logger=neptune_logger, max_epochs=cfg.model.max_epochs)
+    trainer = pl.Trainer(logger=neptune_logger,
+                         max_epochs=cfg.model.max_epochs,
+                         callbacks=[
+                             EarlyStopping(monitor='val/epoch/loss', mode='min',
+                                           patience=cfg.model.early_stopping.patience)
+                         ],
+                         log_every_n_steps=10)
     trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
 
     log.info('Performing model evaluation')
-    # TODO implement in trainer
     trainer.test(model=model, dataloaders=test_loader)
 
-    log.info('Model training completed')
+    log.info(f'Model training completed: {run_name}')
 
 
 if __name__ == "__main__":

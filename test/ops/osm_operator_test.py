@@ -21,4 +21,3 @@ def test_ohsome_fetch():
         result = ops.labels(test_coords, '2020-06-30', osm_lulc, (300, 300))
         assert ['urban', 'forest'], list(result.keys())
         assert (300, 300) == result['urban'].shape, 'Shapes should match'
-

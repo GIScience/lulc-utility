@@ -1,4 +1,5 @@
 defaults:
+  - _self_
   - model: baseline
 
 cache:
@@ -8,8 +9,11 @@ data:
   dir: ../data
   train_frac: 0.8
   test_frac: 0.1
+  crop:
+    height: 1024
+    width: 1024
   descriptor:
-    area: v1
+    area: c984858b-38d8-46ab-af18-e039b5f342fb
     imagery: v1
     labels: v1
 

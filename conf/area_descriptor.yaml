@@ -1,13 +1,30 @@
 area:
+  # Source of the NUTS layer
   nuts_source: https://gisco-services.ec.europa.eu/distribution/v2/nuts/geojson/NUTS_RG_10M_2021_4326.geojson
   nuts_id_col: NUTS_ID
+
+  # Determine the initial grid of the split [osm, utm]
+  # More: https://sentinelhub-py.readthedocs.io/en/latest/examples/large_area_utilities.html
   split_mode: osm
+
+  # Research timespan. Only data from the declared period will be used during dataset computation
   timeframe:
-    start_date: 01-05-2023
-    end_date: 01-06-2023
+    start_date: 2023-05-01
+    end_date: 2023-06-01
+
+  # Areas that will be incorporated into the dataset
   target_nuts_ids:
     - DE1
     - DE2
-  output_dir: /tmp
-  osm:
+
+  # Directory where the descriptor will be placed after calculation
+  output_dir: ../data/area
+
+  # Additional split parameters
+  split_params:
+
+    # OSM zoom level in case of using the osm split
     zoom_level: 11
+
+    # Size of the computed bounding boxes in case of using the utm split
+    bbox_size_m: 25000

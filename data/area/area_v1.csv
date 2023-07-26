@@ -1,4 +1,0 @@
-name,min_x,min_y,max_x,max_y,subset,start_date,end_date,country
-Heidelberg,8.5992,49.3567,8.7499,49.4371,training,2023-05-01,2023-06-30,Germany
-Łódź,19.4148,51.7344,19.4915,51.8006,training,2023-05-01,2023-06-30,Poland
-Mannheim,8.4269,49.4548,8.5035,49.5243,training,2023-05-01,2023-06-30,Germany

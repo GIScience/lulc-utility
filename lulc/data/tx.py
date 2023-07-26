@@ -102,24 +102,33 @@ class ToTensor:
         return sample
 
 
-class RandomCrops:
+class RandomCrop:
 
-    def __init__(self, crops_number=1, output_size=(256, 256)):
-        self.crops_number = crops_number
-        self.output_size = output_size
+    def __init__(self, out_height=256, out_width=256):
+        self.output_size = (out_height, out_width)
 
     def __call__(self, sample):
-        crops = []
         x = sample['x']
         y = sample['y']
-        for i in range(self.crops_number):
-            i, j, h, w = transforms.RandomCrop.get_params(x, output_size=self.output_size)
-            patch = {
-                'x': F.crop(x, i, j, h, w),
-                'y': F.crop(y, i, j, h, w)
-            }
-            crops.append(patch)
-        return crops
+        i, j, h, w = transforms.RandomCrop.get_params(x, output_size=self.output_size)
+        return {
+            'x': F.crop(x, i, j, h, w),
+            'y': F.crop(y, i, j, h, w)
+        }
+
+
+class CenterCrop:
+
+    def __init__(self, out_height=256, out_width=256):
+        self.output_size = [out_height, out_width]
+
+    def __call__(self, sample):
+        x = sample['x']
+        y = sample['y']
+        return {
+            'x': F.center_crop(x, self.output_size),
+            'y': F.center_crop(y, self.output_size)
+        }
 
 
 class NanToNum(Tx):

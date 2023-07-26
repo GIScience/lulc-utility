@@ -19,7 +19,7 @@ class OhsomeOps:
     def __init__(self, cache_dir: Path, resolution=(-.0001, .0001)):
         self.cache_dir: Path = cache_dir
         self.resolution = resolution
-        self.ohsome = OhsomeClient(user_agent='ClimateAction/LULC')
+        self.ohsome = OhsomeClient(user_agent='ClimateAction/LULC', log=False)
 
     def labels(self, area_coords: Tuple[float, float, float, float],
                time: str,
