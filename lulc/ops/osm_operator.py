@@ -1,5 +1,7 @@
 import hashlib
 import uuid
+from functools import partial
+from multiprocessing.pool import ThreadPool
 from pathlib import Path
 from typing import Tuple, Dict
 
@@ -25,37 +27,42 @@ class OhsomeOps:
                target_size: Tuple[int, int]) -> Dict[str, np.ndarray]:
         result = {}
         height, width = target_size
+        bbox = ','.join(map(str, area_coords))
+        bbox_id = self.__calculate_id(bbox)
+        utm = self.__utm_from_coords(area_coords)
 
-        for label, osm_filter in osm_lulc_mapping.items():
-            bbox = ','.join(map(str, area_coords))
-            bbox_id = self.__calculate_id(bbox)
-
-            data_folder = self.cache_dir / label
-            data_folder.mkdir(parents=True, exist_ok=True)
-            raster_data = data_folder / f'{bbox_id}.tiff'
-
-            if not raster_data.exists():
-                response = self.ohsome.elements.geometry.post(
-                    bboxes=bbox,
-                    time=time,
-                    filter=f'({osm_filter}) and geometry:polygon'
-                )
-
-                vector_data = response.as_dataframe()
-                if not vector_data.empty:
-                    utm = self.__utm_from_coords(area_coords)
-                    raster = self.__computer_raster(vector_data, utm)
-                    raster.rio.to_raster(raster_data)
-
-            if raster_data.exists():
-                with rasterio.open(raster_data) as dataset:
-                    data = dataset.read(1, out_shape=(dataset.count, height, width), resampling=Resampling.bilinear)
-            else:
-                data = np.zeros((dataset.count, height, width))
-
-            result[label] = data.astype(np.bool_)
+        fetch_label_p = partial(self.__compute_label_mask, bbox, bbox_id, time, utm, height, width)
+        with ThreadPool(len(osm_lulc_mapping)) as pool:
+            for label, data in pool.map(fetch_label_p, osm_lulc_mapping.items()):
+                result[label] = data.astype(np.bool_)
 
         return result
+
+    def __compute_label_mask(self, bbox: str, bbox_id: uuid.UUID, time: str, utm: str, height: int, width: int,
+                             osm_lulc_mapping: Tuple[str, str]) -> Tuple[str, np.ndarray]:
+        label, osm_filter = osm_lulc_mapping
+        data_folder = self.cache_dir / label
+        data_folder.mkdir(parents=True, exist_ok=True)
+        raster_data = data_folder / f'{bbox_id}.tiff'
+
+        if not raster_data.exists():
+            vector_data = self.ohsome.elements.geometry.post(
+                bboxes=bbox,
+                time=time,
+                filter=f'({osm_filter}) and geometry:polygon'
+            ).as_dataframe()
+
+            if not vector_data.empty:
+                raster = self.__computer_raster(vector_data, utm)
+                raster.rio.to_raster(raster_data)
+
+        if raster_data.exists():
+            with rasterio.open(raster_data) as dataset:
+                data = dataset.read(1, out_shape=(dataset.count, height, width), resampling=Resampling.bilinear)
+        else:
+            data = np.zeros((1, height, width))
+
+        return label, data
 
     @staticmethod
     def __calculate_id(text: str) -> uuid.UUID:
