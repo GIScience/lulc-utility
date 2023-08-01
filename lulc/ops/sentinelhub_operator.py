@@ -1,12 +1,26 @@
+import logging
+from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Tuple, Dict
 
 import numpy as np
 from sentinelhub import BBox, CRS, bbox_to_dimensions, SentinelHubRequest, DataCollection, MosaickingOrder, MimeType, \
-    SHConfig
+    SHConfig, DownloadFailedException
+
+from lulc.ops.exception import OperatorInteractionException, OperatorValidationException
+
+log = logging.getLogger(__name__)
 
 
-class SentinelHubOperator:
+class ImageryStore(ABC):
+
+    @abstractmethod
+    def imagery(self, area_coords: Tuple, start_date: str, end_date: str,
+                resolution: int = 10) -> tuple[Dict[str, np.ndarray], tuple[int, int]]:
+        pass
+
+
+class SentinelHubOperator(ImageryStore):
 
     def __init__(self, api_id: str, api_secret: str, evalscript_dir: Path, evalscript_name: str, cache_dir: Path):
         self.config = SHConfig(**{
@@ -23,6 +37,9 @@ class SentinelHubOperator:
                 resolution: int = 10) -> tuple[Dict[str, np.ndarray], tuple[int, int]]:
         bbox = BBox(bbox=area_coords, crs=CRS.WGS84)
         bbox_width, bbox_height = bbox_to_dimensions(bbox, resolution=resolution)
+
+        if bbox_width > 2500 or bbox_width > 2500:
+            raise OperatorValidationException('Area exceeds processing limit: 2500 px x 2500 px')
 
         request = SentinelHubRequest(
             data_folder=str(self.data_folder),
@@ -55,4 +72,8 @@ class SentinelHubOperator:
             config=self.config,
         )
 
-        return request.get_data(save_data=True)[0], (bbox_height, bbox_width)
+        try:
+            return request.get_data(save_data=True)[0], (bbox_height, bbox_width)
+        except DownloadFailedException:
+            log.exception('Data download not possible')
+            raise OperatorInteractionException('SentinelHub operator interaction not possible. Please contact platform administrator.')

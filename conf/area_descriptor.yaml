@@ -18,7 +18,7 @@ area:
     - DE2
 
   # Directory where the descriptor will be placed after calculation
-  output_dir: ../data/area
+  output_dir: ./data/area
 
   # Additional split parameters
   split_params:

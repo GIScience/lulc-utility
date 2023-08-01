@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from lulc.model.model import SegFormerModule
+from lulc.model.model import SegformerModule
 
 
 @pytest.mark.parametrize(
@@ -9,7 +9,7 @@ from lulc.model.model import SegFormerModule
     [('MiT-b0', 3.7), ('MiT-b1', 14.0), ('MiT-b2', 25.4), ('MiT-b3', 45.2), ('MiT-b4', 62.6), ('MiT-b5', 82.0)],
 )
 def test_seg_former_module_variant(variant, expected_num_params):
-    model = SegFormerModule(num_channels=5,
+    model = SegformerModule(num_channels=5,
                             labels=['A', 'B'],
                             variant=variant,
                             lr=0.0001,
@@ -19,7 +19,7 @@ def test_seg_former_module_variant(variant, expected_num_params):
 
 
 def test_step():
-    model = SegFormerModule(num_channels=2,
+    model = SegformerModule(num_channels=2,
                             labels=['A', 'B'],
                             variant='MiT-b0',
                             lr=0.0001,
@@ -33,7 +33,7 @@ def test_step():
         'y': torch.randint(0, 2, (2, 256, 256))
     }
 
-    loss = model._SegFormerModule__step(batch, 'test')
+    loss = model._SegformerModule__step(batch, 'test')
     assert loss != torch.nan
 
     for metric in model.metrics['test'].values():

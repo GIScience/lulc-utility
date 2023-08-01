@@ -14,7 +14,8 @@ from torchvision import transforms
 
 from lulc.data.dataset import AreaDataset, random_crop_collate_fn, center_crop_collate_fn
 from lulc.data.tx import MinMaxScaling, MaxScaling, Stack, ReclassifyMerge, ToTensor, NanToNum
-from lulc.model.model import SegFormerModule
+from lulc.model.model import SegformerModule
+from lulc.model.registry import NeptuneModelRegistry
 
 log = logging.getLogger(__name__)
 
@@ -31,7 +32,8 @@ def train(cfg: DictConfig) -> None:
         project=cfg.neptune.project,
         api_key=cfg.neptune.api_token,
         log_model_checkpoints=False,
-        mode=cfg.neptune.mode
+        mode=cfg.neptune.mode,
+        prefix=''
     )
     neptune_logger.log_hyperparams(params=cfg.model)
 
@@ -71,7 +73,7 @@ def train(cfg: DictConfig) -> None:
     test_loader = loader_p(dataset=test_dataset, collate_fn=center_crop_collate_fn(cfg.data.crop.height, cfg.data.crop.width))
 
     log.info(f'Creating a model ({cfg.model.variant})')
-    model = SegFormerModule(num_channels=cfg.model.num_channels,
+    model = SegformerModule(num_channels=cfg.model.num_channels,
                             labels=dataset.labels,
                             variant=cfg.model.variant,
                             lr=cfg.model.lr,
@@ -91,6 +93,11 @@ def train(cfg: DictConfig) -> None:
     trainer.test(model=model, dataloaders=test_loader)
 
     log.info(f'Model training completed: {run_name}')
+    registry = NeptuneModelRegistry(model_key=cfg.neptune.model.key,
+                                    project=cfg.neptune.project,
+                                    api_key=cfg.neptune.api_token,
+                                    cache_dir=Path(cfg.cache.dir))
+    registry.register_version(model, run_name, neptune_logger.experiment.get_url())
 
 
 if __name__ == "__main__":

@@ -1,30 +1,33 @@
 defaults:
   - _self_
   - model: baseline
+  - serve: local
 
 cache:
-  dir: ../cache
+  dir: ./cache
 
 data:
-  dir: ../data
+  dir: ./data
   train_frac: 0.8
   test_frac: 0.1
   crop:
     height: 1024
     width: 1024
   descriptor:
-    area: c984858b-38d8-46ab-af18-e039b5f342fb
+    area: valid
     imagery: v1
     labels: v1
 
 hydra:
   run:
-    dir: ../outputs/${hydra.job.name}/${now:%Y-%m-%d_%H-%M-%S}
+    dir: ./outputs/${hydra.job.name}/${now:%Y-%m-%d_%H-%M-%S}
 
 neptune:
   project: ${oc.env:NEPTUNE_PROJECT_ID}
   api_token: ${oc.env:NEPTUNE_PROJECT_API_TOKEN}
   mode: ${oc.env:NEPTUNE_MODE}
+  model:
+    key: LULC
 
 sentinel_hub:
   api:

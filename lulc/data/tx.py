@@ -57,6 +57,22 @@ class Stack(Tx):
         return sample
 
 
+class ExtendShape(Tx):
+
+    def __init__(self, subset='x', ch_first=False):
+        super().__init__(subset)
+        self.ch_first = ch_first
+
+    def __call__(self, sample):
+        for subset_name, subset in sample.items():
+            subset = subset[np.newaxis, ...]
+            if self.ch_first:
+                subset = np.transpose(subset, [0, 3, 1, 2])
+            sample[subset_name] = subset
+
+        return sample
+
+
 class ReclassifyMerge(Tx):
 
     def __init__(self, subset='y', method='denser_on_bottom'):
@@ -96,6 +112,8 @@ class ToTensor:
             tensor = torch.from_numpy(subset)
             if self.ch_first and len(tensor.shape) == 3:
                 tensor = tensor.permute(2, 0, 1)
+            elif self.ch_first and len(tensor.shape) == 4:
+                tensor = tensor.permute(0, 3, 1, 2)
 
             sample[subset_name] = tensor
 

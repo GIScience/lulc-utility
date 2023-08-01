@@ -10,5 +10,5 @@ data/area/
 **/ohsome_log
 
 .idea/**
-.neptune/**
+**/.neptune/**
 .ruff_cache

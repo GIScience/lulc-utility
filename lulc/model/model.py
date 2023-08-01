@@ -42,7 +42,7 @@ MODEL_VARIANTS = {
 }
 
 
-class SegFormerModule(pl.LightningModule):
+class SegformerModule(pl.LightningModule):
 
     def __init__(self, num_channels: int, labels: List[str], variant: str, lr: float, device: torch.device,
                  *args: Any, **kwargs: Any):
@@ -52,16 +52,16 @@ class SegFormerModule(pl.LightningModule):
         id2label = {v: k for k, v in label2id.items()}
 
         variant_config = MODEL_VARIANTS[variant]
-        configuration = SegformerConfig(num_channels=num_channels,
-                                        num_labels=num_labels,
-                                        id2label=id2label,
-                                        label2id=label2id,
-                                        semantic_loss_ignore_index=0,
-                                        depths=variant_config['depths'],
-                                        hidden_sizes=variant_config['hidden_sizes'],
-                                        decoder_hidden_size=variant_config['decoder_hidden_size'])
+        self.configuration = SegformerConfig(num_channels=num_channels,
+                                             num_labels=num_labels,
+                                             id2label=id2label,
+                                             label2id=label2id,
+                                             semantic_loss_ignore_index=0,
+                                             depths=variant_config['depths'],
+                                             hidden_sizes=variant_config['hidden_sizes'],
+                                             decoder_hidden_size=variant_config['decoder_hidden_size'])
 
-        self.model = SegformerForSemanticSegmentation(configuration)
+        self.model = SegformerForSemanticSegmentation(self.configuration)
         self.lr = lr
 
         self.metrics = {}
@@ -74,6 +74,9 @@ class SegFormerModule(pl.LightningModule):
                 'precision': Precision(task='multiclass', num_classes=num_labels).to(device),
                 'recall': Recall(task='multiclass', num_classes=num_labels).to(device)
             }
+
+    def forward(self, x) -> Any:
+        return self.model(x).logits
 
     def training_step(self, batch, *args):
         return self.__step(batch, phase='train')
