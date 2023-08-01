@@ -75,7 +75,10 @@ def __predict(imagery_store: ImageryStore, inference_session: InferenceSession, 
 
 
 class Body(BaseModel):
-    area_coords: Tuple[float, float, float, float] = Field(examples=[[7.3828125, 47.5172006978394, 7.55859375, 47.63578359086485]])
+    area_coords: Tuple[float, float, float, float] = Field(examples=[[12.304687500000002,
+                                                                      48.2246726495652,
+                                                                      12.480468750000002,
+                                                                      48.3416461723746]])
     start_date: str = Field(examples=['2023-05-01'])
     end_date: str = Field(examples=['2023-06-01'])
 

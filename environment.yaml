@@ -1,9 +1,9 @@
 name: ca-lulc-utility
 channels:
+  - conda-forge
   - pytorch
   - nvidia
   - defaults
-  - conda-forge
 dependencies:
   - geopandas=0.13.2
   - geos=3.11.1

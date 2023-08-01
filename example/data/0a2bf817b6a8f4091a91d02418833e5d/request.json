@@ -1,0 +1,99 @@
+{
+    "request": {
+        "headers": {
+            "accept": "application/x-tar",
+            "content-type": "application/json"
+        },
+        "payload": {
+            "evalscript": "//VERSION=3\n\nfunction setup() {\n    return {\n        input: [\n            {\n                datasource: \"s1\",\n                bands: [\"VV\", \"VH\"],\n                processing: {\n                    orthorectify: \"true\"\n                }\n            },\n            {\n                datasource: \"s2\",\n                bands: [\"B02\", \"B03\", \"B04\", \"B08\", \"B11\", \"B12\"]\n            },\n            {\n                datasource: \"dem\",\n                bands: [\"DEM\"]\n            }\n        ],\n        output: [{\n            id: \"s2\",\n            bands: 6,\n            resx: 10,\n            resy: 10,\n            sampleType: \"UINT8\"\n        }, {\n            id: \"s1\",\n            bands: 2,\n            resx: 10,\n            resy: 10,\n            sampleType: \"FLOAT32\"\n        }, {\n            id: \"dem\",\n            bands: 1,\n            resx: 10,\n            resy: 10,\n            sampleType: \"FLOAT32\"\n        }]\n    }\n}\n\nfunction evaluatePixel(samples) {\n    let s1_sample = samples.s1[0]\n    let s2_sample = samples.s2[0]\n    let dem_sample = samples.dem[0]\n\n    return {\n        \"s2\": [\n            s2_sample.B04 * 255,\n            s2_sample.B03 * 255,\n            s2_sample.B02 * 255,\n            s2_sample.B08 * 255,\n            s2_sample.B11 * 255,\n            s2_sample.B12 * 255\n        ],\n        \"s1\": [\n            s1_sample.VV,\n            s1_sample.VH\n        ],\n        \"dem\": [\n            dem_sample.DEM\n        ]\n    }\n}",
+            "input": {
+                "bounds": {
+                    "bbox": [
+                        12.304687500000002,
+                        48.2246726495652,
+                        12.480468750000002,
+                        48.3416461723746
+                    ],
+                    "properties": {
+                        "crs": "http://www.opengis.net/def/crs/EPSG/0/4326"
+                    }
+                },
+                "data": [
+                    {
+                        "dataFilter": {
+                            "timeRange": {
+                                "from": "2023-05-01T00:00:00Z",
+                                "to": "2023-06-01T23:59:59Z"
+                            }
+                        },
+                        "id": "s1",
+                        "type": "sentinel-1-grd"
+                    },
+                    {
+                        "dataFilter": {
+                            "mosaickingOrder": "leastCC",
+                            "timeRange": {
+                                "from": "2023-05-01T00:00:00Z",
+                                "to": "2023-06-01T23:59:59Z"
+                            }
+                        },
+                        "id": "s2",
+                        "type": "sentinel-2-l1c"
+                    },
+                    {
+                        "dataFilter": {
+                            "timeRange": {
+                                "from": "2023-05-01T00:00:00Z",
+                                "to": "2023-06-01T23:59:59Z"
+                            }
+                        },
+                        "id": "dem",
+                        "type": "dem"
+                    }
+                ]
+            },
+            "output": {
+                "height": 1256,
+                "responses": [
+                    {
+                        "format": {
+                            "type": "image/tiff"
+                        },
+                        "identifier": "s1"
+                    },
+                    {
+                        "format": {
+                            "type": "image/tiff"
+                        },
+                        "identifier": "s2"
+                    },
+                    {
+                        "format": {
+                            "type": "image/tiff"
+                        },
+                        "identifier": "dem"
+                    }
+                ],
+                "width": 1348
+            }
+        },
+        "timestamp": "2023-07-26T13:36:11.821670",
+        "url": "https://services.sentinel-hub.com/api/v1/process"
+    },
+    "response": {
+        "elapsed": 8.774608,
+        "headers": {
+            "Connection": "keep-alive",
+            "Content-Type": "application/x-tar",
+            "Date": "Wed, 26 Jul 2023 11:36:06 GMT",
+            "Transfer-Encoding": "chunked",
+            "access-control-allow-credentials": "true",
+            "access-control-allow-headers": "origin,content-type,accept,accept-crs,authorization,cache-control",
+            "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS, HEAD, PATCH",
+            "access-control-allow-origin": "*",
+            "access-control-max-age": "3600",
+            "x-processingunits-spent": "38.75170936933864"
+        },
+        "status_code": 200
+    }
+}

@@ -1,9 +1,9 @@
 cache/**
 __pycache__/
 outputs/
-data/area/
 .tiff
 .tif
+.env
 
 .pytest_cache
 **/lightning_logs

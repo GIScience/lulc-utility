@@ -1,0 +1,17 @@
+cache/**
+outputs/
+.tiff
+.tif
+test/**
+.env
+
+__pycache__/
+.pytest_cache
+**/lightning_logs
+**/ohsome_log
+
+.idea/**
+**/.neptune/**
+.ruff_cache
+.git
+.gitignore
