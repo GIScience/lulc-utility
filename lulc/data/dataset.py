@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from typing import Optional, List, Dict
 
@@ -46,7 +47,7 @@ class AreaDataset(Dataset):
         item_path = self.item_cache / str(idx)
         x_path = f'{item_path}/x.pt'
         y_path = f'{item_path}/y.pt'
-        if not item_path.exists():
+        if not item_path.exists() or len(os.listdir(item_path)) == 0:
             area = self.area_descriptor.iloc[idx]
             area_coords = tuple(area[['min_x', 'min_y', 'max_x', 'max_y']].values)
             imagery, imagery_size = self.sentinelhub.imagery(area_coords, area['start_date'], area['end_date'])
@@ -56,7 +57,7 @@ class AreaDataset(Dataset):
                 'y': labels
             }
 
-            item_path.mkdir(parents=True)
+            item_path.mkdir(parents=True, exist_ok=True)
             item = self.deterministic_tx(item)
             torch.save(item['x'], x_path)
             torch.save(item['y'], y_path)

@@ -45,7 +45,7 @@ MODEL_VARIANTS = {
 class SegformerModule(pl.LightningModule):
 
     def __init__(self, num_channels: int, labels: List[str], variant: str, lr: float, device: torch.device,
-                 *args: Any, **kwargs: Any):
+                 class_weights: List[float], *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         num_labels = len(labels)
         label2id = {k: v for v, k in enumerate(labels)}
@@ -60,6 +60,8 @@ class SegformerModule(pl.LightningModule):
                                              depths=variant_config['depths'],
                                              hidden_sizes=variant_config['hidden_sizes'],
                                              decoder_hidden_size=variant_config['decoder_hidden_size'])
+
+        self.class_weights = torch.tensor(class_weights).to(device)
 
         self.model = SegformerForSemanticSegmentation(self.configuration)
         self.lr = lr
@@ -79,29 +81,34 @@ class SegformerModule(pl.LightningModule):
         return self.model(x).logits
 
     def training_step(self, batch, *args):
-        return self.__step(batch, phase='train')
+        return self.step(batch, phase='train')
 
     def validation_step(self, batch, *args):
-        return self.__step(batch, phase='val')
+        return self.step(batch, phase='val')
 
     def test_step(self, batch, *args):
-        return self.__step(batch, phase='test')
+        return self.step(batch, phase='test')
 
-    def __step(self, batch, phase):
+    def step(self, batch, phase):
         x, y = batch['x'], batch['y']
-        outputs = self.model(x, y)
 
-        up_logits = F.interpolate(outputs.logits, size=y.shape[-2:], mode="bilinear", align_corners=False)
-        y_pred = up_logits.argmax(dim=1)
+        logits = self.model(x).logits
+        upsampled_logits = F.interpolate(logits, size=y.shape[-2:], mode="bilinear", align_corners=False)
 
-        self.metrics[phase]['loss'].update(outputs.loss)
-        self.log(f'{phase}/batch/loss', outputs.loss)
+        loss = F.cross_entropy(upsampled_logits, y,
+                               ignore_index=self.configuration.semantic_loss_ignore_index,
+                               weight=self.class_weights)
+
+        y_pred = upsampled_logits.argmax(dim=1)
+
+        self.metrics[phase]['loss'].update(loss)
+        self.log(f'{phase}/batch/loss', loss, prog_bar=True)
 
         for metric_name, metric in self.metrics[phase].items():
             if metric_name != 'loss':
                 metric.update(y_pred, y)
 
-        return outputs.loss
+        return loss
 
     def on_train_epoch_end(self):
         return self.__on_epoch_end('train')

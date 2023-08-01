@@ -1,6 +1,7 @@
 import logging
 from functools import partial
 from pathlib import Path
+from shutil import rmtree
 
 import hydra
 import lightning.pytorch as pl
@@ -13,7 +14,7 @@ from torch.utils.data import DataLoader, random_split
 from torchvision import transforms
 
 from lulc.data.dataset import AreaDataset, random_crop_collate_fn, center_crop_collate_fn
-from lulc.data.tx import MinMaxScaling, MaxScaling, Stack, ReclassifyMerge, ToTensor, NanToNum
+from lulc.data.tx import Normalize, Stack, ReclassifyMerge, ToTensor, NanToNum
 from lulc.model.model import SegformerModule
 from lulc.model.registry import NeptuneModelRegistry
 
@@ -36,6 +37,9 @@ def train(cfg: DictConfig) -> None:
         prefix=''
     )
     neptune_logger.log_hyperparams(params=cfg.model)
+    neptune_logger.experiment['data/area'] = cfg.data.descriptor.area
+    neptune_logger.experiment['data/label'] = cfg.data.descriptor.labels
+    neptune_logger.experiment['data/imagery'] = cfg.data.descriptor.imagery
 
     log.info(f'Initializing dataset (area: {cfg.data.descriptor.area}, '
              f'label: {cfg.data.descriptor.labels}, imagery: {cfg.data.descriptor.imagery})')
@@ -50,13 +54,16 @@ def train(cfg: DictConfig) -> None:
         cache_dir=Path(cfg.cache.dir),
         deterministic_tx=transforms.Compose([
             NanToNum(layers=['s1.tif', 's2.tif']),
-            MinMaxScaling(layers=['s1.tif', 'dem.tif']),
-            MaxScaling(layers=['s2.tif']),
             Stack(),
             ReclassifyMerge(),
-            ToTensor(ch_first=True)
+            ToTensor(),
+            Normalize(mean=cfg.data.normalize.mean, std=cfg.data.normalize.std)
         ])
     )
+
+    if dataset.item_cache.exists():
+        log.info('Refreshing item intermediate cache (if exists)')
+        rmtree(str(dataset.item_cache))
 
     train_size = int(cfg.data.train_frac * len(dataset))
     test_size = int(cfg.data.test_frac * len(dataset))
@@ -77,7 +84,8 @@ def train(cfg: DictConfig) -> None:
                             labels=dataset.labels,
                             variant=cfg.model.variant,
                             lr=cfg.model.lr,
-                            device=device)
+                            device=device,
+                            class_weights=cfg.data.class_weights)
 
     log.info(f'Training model for {cfg.model.max_epochs} epochs')
     trainer = pl.Trainer(logger=neptune_logger,

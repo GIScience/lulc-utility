@@ -13,36 +13,6 @@ class Tx(ABC):
         self.subset = subset
 
 
-class MinMaxScaling(Tx):
-    def __init__(self, layers: List[str], subset='x'):
-        super().__init__(subset)
-        self.layers = layers
-
-    def __call__(self, sample):
-        for layer in self.layers:
-            tx_data: np.ndarray = sample[self.subset][layer]
-            tx_data = (tx_data - np.min(tx_data)) / (np.max(tx_data) - np.min(tx_data))
-            tx_data = tx_data.astype(np.float32)
-            sample[self.subset][layer] = tx_data
-        return sample
-
-
-class MaxScaling(Tx):
-
-    def __init__(self, layers: List[str], subset='x', max_value=255):
-        super().__init__(subset)
-        self.max_value = max_value
-        self.layers = layers
-
-    def __call__(self, sample):
-        for layer in self.layers:
-            tx_data: np.ndarray = sample[self.subset][layer] / self.max_value
-            tx_data = tx_data.astype(np.float32)
-
-            sample[self.subset][layer] = tx_data
-        return sample
-
-
 class Stack(Tx):
 
     def __init__(self, subset='x'):
@@ -59,16 +29,12 @@ class Stack(Tx):
 
 class ExtendShape(Tx):
 
-    def __init__(self, subset='x', ch_first=False):
+    def __init__(self, subset='x'):
         super().__init__(subset)
-        self.ch_first = ch_first
 
     def __call__(self, sample):
         for subset_name, subset in sample.items():
-            subset = subset[np.newaxis, ...]
-            if self.ch_first:
-                subset = np.transpose(subset, [0, 3, 1, 2])
-            sample[subset_name] = subset
+            sample[subset_name] = subset[np.newaxis, ...]
 
         return sample
 
@@ -104,18 +70,24 @@ class ReclassifyMerge(Tx):
 
 class ToTensor:
 
-    def __init__(self, ch_first=False):
-        self.ch_first = ch_first
-
     def __call__(self, sample):
         for subset_name, subset in sample.items():
             tensor = torch.from_numpy(subset)
-            if self.ch_first and len(tensor.shape) == 3:
+            if len(tensor.shape) == 3:
                 tensor = tensor.permute(2, 0, 1)
-            elif self.ch_first and len(tensor.shape) == 4:
+            elif len(tensor.shape) == 4:
                 tensor = tensor.permute(0, 3, 1, 2)
 
             sample[subset_name] = tensor
+
+        return sample
+
+
+class ToNumpy:
+
+    def __call__(self, sample):
+        for subset_name, subset in sample.items():
+            sample[subset_name] = subset.numpy()
 
         return sample
 
@@ -161,4 +133,14 @@ class NanToNum(Tx):
             tx_data: np.ndarray = np.nan_to_num(sample[self.subset][layer], nan=self.fill_value)
 
             sample[self.subset][layer] = tx_data
+        return sample
+
+
+class Normalize(Tx):
+    def __init__(self, mean: List[float], std: List[float], subset='x'):
+        super().__init__(subset)
+        self.normalize = transforms.Normalize(mean, std)
+
+    def __call__(self, sample):
+        sample[self.subset] = self.normalize(sample[self.subset])
         return sample

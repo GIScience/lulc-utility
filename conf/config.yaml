@@ -1,22 +1,13 @@
 defaults:
   - _self_
+  - data: baseline
   - model: baseline
   - serve: local
 
 cache:
   dir: ./cache
 
-data:
-  dir: ./data
-  train_frac: 0.8
-  test_frac: 0.1
-  crop:
-    height: 1024
-    width: 1024
-  descriptor:
-    area: valid
-    imagery: v1
-    labels: v1
+
 
 hydra:
   run:

@@ -20,7 +20,7 @@ from starlette.responses import Response, RedirectResponse
 from torchvision import transforms
 
 from lulc.data.color import resolve_color_codes
-from lulc.data.tx import MinMaxScaling, MaxScaling, Stack, NanToNum, ExtendShape
+from lulc.data.tx import Normalize, Stack, NanToNum, ExtendShape, ToTensor, ToNumpy
 from lulc.model.registry import NeptuneModelRegistry
 from lulc.ops.exception import OperatorValidationException, OperatorInteractionException
 from lulc.ops.sentinelhub_operator import SentinelHubOperator, ImageryStore
@@ -47,20 +47,23 @@ async def configure_dependencies(app: FastAPI):
                                     cache_dir=Path(cfg.cache.dir))
     onnx_model = registry.download_model_version(cfg.serve.model_version)
     app.state.inference_session = InferenceSession(str(onnx_model))
+
+    app.state.tx = transforms.Compose([
+        NanToNum(layers=['s1.tif', 's2.tif'], subset='imagery'),
+        Stack(subset='imagery'),
+        ToTensor(),
+        Normalize(subset='imagery', mean=cfg.data.normalize.mean, std=cfg.data.normalize.std),
+        ToNumpy(),
+        ExtendShape(subset='imagery')
+    ])
     yield
 
 
 @lru_cache(maxsize=32)
-def __predict(imagery_store: ImageryStore, inference_session: InferenceSession, area_coords: Tuple[float, float, float, float], start_date: str, end_date: str):
+def __predict(imagery_store: ImageryStore, inference_session: InferenceSession, tx: transforms.Compose,
+              area_coords: Tuple[float, float, float, float], start_date: str, end_date: str):
     try:
         imagery, imagery_size = imagery_store.imagery(area_coords, start_date, end_date)
-        tx = transforms.Compose([
-            NanToNum(layers=['s1.tif', 's2.tif'], subset='imagery'),
-            MinMaxScaling(layers=['s1.tif', 'dem.tif'], subset='imagery'),
-            MaxScaling(layers=['s2.tif'], subset='imagery'),
-            Stack(subset='imagery'),
-            ExtendShape(subset='imagery', ch_first=True),
-        ])
         imagery = tx({'imagery': imagery})
         labels = inference_session.run(output_names=None, input_feed=imagery)[0][0]
 
@@ -88,7 +91,12 @@ def is_ok():
 
 @segment.post('/preview')
 def segment_preview(body: Body, request: Request):
-    labels, _ = __predict(request.app.state.imagery_store, request.app.state.inference_session, body.area_coords, body.start_date, body.end_date)
+    labels, _ = __predict(request.app.state.imagery_store,
+                          request.app.state.inference_session,
+                          request.app.state.tx,
+                          body.area_coords,
+                          body.start_date,
+                          body.end_date)
     labels = request.app.state.color_codes[labels]
     labels = Image.fromarray(labels)
 
@@ -101,7 +109,12 @@ def segment_preview(body: Body, request: Request):
 
 @segment.post('/')
 def segment_compute(body: Body, request: Request):
-    labels, (h, w) = __predict(request.app.state.imagery_store, request.app.state.inference_session, body.area_coords, body.start_date, body.end_date)
+    labels, (h, w) = __predict(request.app.state.imagery_store,
+                               request.app.state.inference_session,
+                               request.app.state.tx,
+                               body.area_coords,
+                               body.start_date,
+                               body.end_date)
     labels = Image.fromarray(labels, mode='L').resize((w, h), Resampling.BILINEAR)
 
     buf = io.BytesIO()

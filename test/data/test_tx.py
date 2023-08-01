@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 import torch
 
-from lulc.data.tx import MinMaxScaling, MaxScaling, Stack, ReclassifyMerge, ToTensor, RandomCrop, CenterCrop
+from lulc.data.tx import Stack, ReclassifyMerge, ToTensor, RandomCrop, CenterCrop, Normalize
 
 test_data_a = {
     'x': {
@@ -28,25 +28,14 @@ test_data_c = {
     'y': torch.randint(0, 5, (256, 256))
 }
 
-
-def test_normalize_reflectance():
-    tx = MaxScaling(layers=['s2.tif'])
-    result: np.ndarray = tx(test_data_a)['x']['s2.tif']
-    assert (256, 256, 6) == result.shape
-    assert np.float32 == result.dtype
-    assert np.all((result >= 0) & (result <= 1))
-
-
-def test_normalize_dem():
-    tx = MinMaxScaling(layers=['dem.tif', 's1.tif'])
-    result: np.ndarray = tx(test_data_a)['x']['dem.tif']
-    assert (256, 256) == result.shape
-    assert np.float32 == result.dtype
-
-    result: np.ndarray = tx(test_data_a)['x']['s1.tif']
-    assert (256, 256, 2) == result.shape
-    assert np.float32 == result.dtype
-    assert np.all((result >= 0) & (result <= 1))
+test_data_d = {
+    'x': torch.cat([
+        torch.full((1, 256, 256), 0.5, dtype=torch.float32),
+        torch.full((1, 256, 256), 10, dtype=torch.float32),
+        torch.full((1, 256, 256), 200, dtype=torch.float32)
+    ]),
+    'y': torch.randint(0, 5, (256, 256))
+}
 
 
 def test_stack():
@@ -64,7 +53,7 @@ def test_merge():
 
 
 def test_to_tensor():
-    tx = ToTensor(ch_first=True)
+    tx = ToTensor()
     result = tx(test_data_b)
     assert (9, 256, 256) == result['x'].shape
     assert torch.float64 == result['x'].dtype
@@ -103,3 +92,10 @@ def test_center_crop():
 
     assert torch.equal(result_a['x'], result_b['x'])
     assert torch.equal(result_a['y'], result_b['y'])
+
+
+def test_normalize():
+    tx = Normalize(mean=[0.0, 1.0, 400.0], std=[1.0, 1.0, 100])
+    result = tx(test_data_d)
+    assert (3, 256, 256) == result['x'].shape
+    assert (256, 256) == result['y'].shape

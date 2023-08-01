@@ -6,8 +6,10 @@ import numpy as np
 from fastapi.testclient import TestClient
 from onnxruntime import InferenceSession
 from tifffile import imread
+from torchvision import transforms
 
 from app.api import app
+from lulc.data.tx import Normalize, Stack, NanToNum, ExtendShape, ToTensor, ToNumpy
 from lulc.ops.sentinelhub_operator import ImageryStore
 
 
@@ -16,9 +18,9 @@ class TestImageryStore(ImageryStore):
     def imagery(self, area_coords: Tuple, start_date: str, end_date: str,
                 resolution: int = 10) -> tuple[Dict[str, np.ndarray], tuple[int, int]]:
         return {
-            's1.tif': np.random.uniform(0, 2, (512, 768, 2)),
-            's2.tif': np.random.randint(0, 255, (512, 768, 6)),
-            'dem.tif': np.random.uniform(0, 500, (512, 768, 1)),
+            's1.tif': np.random.uniform(0, 2, (512, 768, 2)).astype(np.float32),
+            's2.tif': np.random.randint(0, 255, (512, 768, 6)).astype(np.float32),
+            'dem.tif': np.random.uniform(0, 500, (512, 768, 1)).astype(np.float32),
         }, (512, 768)
 
 
@@ -37,6 +39,14 @@ client = TestClient(app)
 app.state.imagery_store = TestImageryStore()
 app.state.color_codes = np.random.randint(0, 255, (5, 3)).astype(np.uint8)
 app.state.inference_session = InferenceSession(str(Path(__file__).parent / 'test.onnx'))
+app.state.tx = transforms.Compose([
+    NanToNum(layers=['s1.tif', 's2.tif'], subset='imagery'),
+    Stack(subset='imagery'),
+    ToTensor(),
+    Normalize(subset='imagery', mean=np.random.random(9), std=np.random.random(9)),
+    ToNumpy(),
+    ExtendShape(subset='imagery')
+])
 
 
 def test_health():
