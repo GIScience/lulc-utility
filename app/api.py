@@ -1,6 +1,7 @@
 import io
 import logging
 import os
+import uuid
 from contextlib import asynccontextmanager
 from functools import lru_cache
 from pathlib import Path
@@ -8,15 +9,17 @@ from typing import Tuple
 
 import hydra
 import numpy as np
+import rasterio
 import uvicorn
 from PIL import Image
-from PIL.Image import Resampling
 from fastapi import FastAPI, APIRouter, HTTPException
 from hydra import compose
 from onnxruntime import InferenceSession
 from pydantic import BaseModel, Field
+from rasterio.crs import CRS
+from starlette.background import BackgroundTask
 from starlette.requests import Request
-from starlette.responses import Response, RedirectResponse
+from starlette.responses import Response, FileResponse, RedirectResponse
 from torchvision import transforms
 
 from lulc.data.color import resolve_color_codes
@@ -118,13 +121,30 @@ def segment_compute(body: Body, request: Request):
                                body.area_coords,
                                body.start_date,
                                body.end_date)
-    labels = Image.fromarray(labels, mode='L').resize((w, h), Resampling.BILINEAR)
 
-    buf = io.BytesIO()
-    labels.save(buf, format='TIFF')
-    buf.seek(0)
+    transform = rasterio.transform.from_bounds(*body.area_coords, width=w, height=h)
+    file_path = Path(f'/tmp/{uuid.uuid4()}.tiff')
 
-    return Response(buf.getvalue(), media_type='image/tiff')
+    def unlink():
+        file_path.unlink()
+
+    with rasterio.open(file_path,
+                       mode='w',
+                       driver='GTiff',
+                       height=h,
+                       width=w,
+                       count=1,
+                       dtype=labels.dtype,
+                       crs=CRS.from_string('EPSG:4326'),
+                       nodata=None,
+                       transform=transform) as dst:
+        dst.write(labels, 1)
+        dst.write_colormap(1, dict(enumerate(request.app.state.color_codes)))
+
+    return FileResponse(file_path,
+                        media_type='image/geotiff',
+                        filename='segmentation.tiff',
+                        background=BackgroundTask(unlink))
 
 
 version = APIRouter(prefix='/v1')

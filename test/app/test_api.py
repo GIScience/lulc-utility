@@ -65,5 +65,5 @@ def test_segment_image():
     response = client.post('/v1/segment', json=TEST_JSON)
     response_data = imread(io.BytesIO(response.content))
     assert response.status_code == 200
-    assert response.headers['content-type'] == 'image/tiff'
+    assert response.headers['content-type'] == 'image/geotiff'
     assert response_data.shape == (512, 768)
