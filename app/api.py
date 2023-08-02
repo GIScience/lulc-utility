@@ -22,7 +22,7 @@ from starlette.requests import Request
 from starlette.responses import Response, FileResponse, RedirectResponse
 from torchvision import transforms
 
-from lulc.data.color import resolve_color_codes
+from lulc.data.label import resolve_labels
 from lulc.data.tx import Normalize, Stack, NanToNum, ExtendShape, ToTensor, ToNumpy
 from lulc.model.registry import NeptuneModelRegistry
 from lulc.ops.exception import OperatorValidationException, OperatorInteractionException
@@ -42,7 +42,7 @@ async def configure_dependencies(app: FastAPI):
                                                   evalscript_name=f'imagery_{cfg.data.descriptor.imagery}',
                                                   cache_dir=Path(cfg.cache.dir) / 'sentinelhub')
 
-    app.state.color_codes = resolve_color_codes(Path(cfg.data.dir), cfg.data.descriptor.labels)
+    app.state.labels = resolve_labels(Path(cfg.data.dir), cfg.data.descriptor.labels)
 
     registry = NeptuneModelRegistry(model_key=cfg.neptune.model.key,
                                     project=cfg.neptune.project,
@@ -68,9 +68,9 @@ def __predict(imagery_store: ImageryStore, inference_session: InferenceSession, 
     try:
         imagery, imagery_size = imagery_store.imagery(area_coords, start_date, end_date)
         imagery = tx({'imagery': imagery})
-        labels = inference_session.run(output_names=None, input_feed=imagery)[0][0]
+        logits = inference_session.run(output_names=None, input_feed=imagery)[0][0]
 
-        return np.argmax(labels, axis=0, keepdims=False).astype(np.uint8), imagery_size
+        return np.argmax(logits, axis=0, keepdims=False).astype(np.uint8), imagery_size
     except OperatorValidationException as e:
         raise HTTPException(status_code=400, detail=str(e))
     except OperatorInteractionException as e:
@@ -103,7 +103,7 @@ def segment_preview(body: Body, request: Request):
                           body.area_coords,
                           body.start_date,
                           body.end_date)
-    labels = request.app.state.color_codes[labels]
+    labels = np.array(request.app.state.labels.color_codes, dtype=np.uint8)[labels]
     labels = Image.fromarray(labels)
 
     buf = io.BytesIO()
@@ -139,12 +139,17 @@ def segment_compute(body: Body, request: Request):
                        nodata=None,
                        transform=transform) as dst:
         dst.write(labels, 1)
-        dst.write_colormap(1, dict(enumerate(request.app.state.color_codes)))
+        dst.write_colormap(1, dict(enumerate(request.app.state.labels.color_codes)))
 
     return FileResponse(file_path,
                         media_type='image/geotiff',
                         filename='segmentation.tiff',
                         background=BackgroundTask(unlink))
+
+
+@segment.get('/describe')
+def segment_describe(request: Request):
+    return request.app.state.labels
 
 
 version = APIRouter(prefix='/v1')
