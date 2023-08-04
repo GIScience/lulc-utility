@@ -65,13 +65,13 @@ def test_health(mocked_client):
 
 
 def test_segment_preview(mocked_client):
-    response = mocked_client.post('/v1/segment/preview', json=TEST_JSON)
+    response = mocked_client.post('/segment/preview', json=TEST_JSON)
     assert response.status_code == 200
     assert response.headers['content-type'] == 'image/png'
 
 
 def test_segment_image(mocked_client):
-    response = mocked_client.post('/v1/segment', json=TEST_JSON)
+    response = mocked_client.post('/segment', json=TEST_JSON)
     response_data = imread(io.BytesIO(response.content))
     assert response.status_code == 200
     assert response.headers['content-type'] == 'image/geotiff'
@@ -79,7 +79,7 @@ def test_segment_image(mocked_client):
 
 
 def test_segment_describe(mocked_client):
-    response = mocked_client.get('/v1/segment/describe')
+    response = mocked_client.get('/segment/describe')
     assert response.json() == {'color_codes': [[0, 0, 0],
                                                [255, 0, 0],
                                                [77, 200, 0],

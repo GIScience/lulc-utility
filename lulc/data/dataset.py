@@ -7,6 +7,7 @@ import torch
 from torch.utils.data import Dataset, default_collate
 from torchvision import transforms
 
+from lulc.data.label import resolve_labels
 from lulc.data.tx import RandomCrop, CenterCrop
 from lulc.ops.osm_operator import OhsomeOps
 from lulc.ops.sentinelhub_operator import SentinelHubOperator
@@ -39,6 +40,7 @@ class AreaDataset(Dataset):
         self.item_cache = cache_dir / 'items' / area_descriptor_ver / label_descriptor_ver / imagery_descriptor_ver
         self.deterministic_tx = deterministic_tx
         self.random_tx = random_tx
+        self.color_codes = resolve_labels(data_dir, label_descriptor_ver).color_codes
 
     def __len__(self):
         return len(self.area_descriptor)

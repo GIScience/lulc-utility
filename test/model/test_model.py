@@ -14,7 +14,8 @@ def test_seg_former_module_variant(variant, expected_num_params):
                             variant=variant,
                             lr=0.0001,
                             device=torch.device('cpu'),
-                            class_weights=[1, 0.5])
+                            class_weights=[1, 0.5],
+                            color_codes=[[0, 0, 0], [255, 0, 0]])
     num_params = sum(p.numel() for p in model.parameters() if p.requires_grad) / 10 ** 6
     assert pytest.approx(num_params, 0.1) == expected_num_params
 
@@ -25,7 +26,8 @@ def test_step():
                             variant='MiT-b0',
                             lr=0.0001,
                             device=torch.device('cpu'),
-                            class_weights=[1, 0.5])
+                            class_weights=[1, 0.5],
+                            color_codes=[[0, 0, 0], [255, 0, 0]])
 
     for metric in model.metrics['test'].values():
         assert metric.compute() == torch.tensor(0) or torch.isnan(metric.compute())

@@ -3,6 +3,7 @@ from typing import List, Any
 import lightning.pytorch as pl
 import torch
 import torch.nn.functional as F
+from neptune.types import File
 from torch.optim import Adam
 from torchmetrics import MeanMetric, JaccardIndex, Accuracy, F1Score, Precision, Recall
 from transformers import SegformerForSemanticSegmentation, \
@@ -44,8 +45,16 @@ MODEL_VARIANTS = {
 
 class SegformerModule(pl.LightningModule):
 
-    def __init__(self, num_channels: int, labels: List[str], variant: str, lr: float, device: torch.device,
-                 class_weights: List[float], *args: Any, **kwargs: Any):
+    def __init__(self, num_channels: int,
+                 labels: List[str],
+                 variant: str,
+                 lr: float,
+                 device: torch.device,
+                 class_weights: List[float],
+                 color_codes: List[List[int]],
+                 max_image_samples=5,
+                 *args: Any,
+                 **kwargs: Any):
         super().__init__(*args, **kwargs)
         num_labels = len(labels)
         label2id = {k: v for v, k in enumerate(labels)}
@@ -62,10 +71,13 @@ class SegformerModule(pl.LightningModule):
                                              decoder_hidden_size=variant_config['decoder_hidden_size'])
 
         self.class_weights = torch.tensor(class_weights).to(device)
+        self.color_codes = torch.tensor(color_codes).to(device)
+        self.max_image_samples = max_image_samples
 
         self.model = SegformerForSemanticSegmentation(self.configuration)
         self.lr = lr
 
+        self.images = {}
         self.metrics = {}
         for phase in ['train', 'val', 'test']:
             self.metrics[phase] = {
@@ -76,6 +88,7 @@ class SegformerModule(pl.LightningModule):
                 'precision': Precision(task='multiclass', num_classes=num_labels).to(device),
                 'recall': Recall(task='multiclass', num_classes=num_labels).to(device)
             }
+
 
     def forward(self, x) -> Any:
         return self.model(x).logits
@@ -103,12 +116,19 @@ class SegformerModule(pl.LightningModule):
 
         self.metrics[phase]['loss'].update(loss)
         self.log(f'{phase}/batch/loss', loss, prog_bar=True)
+        self.register_sample_image(y_pred, phase)
 
         for metric_name, metric in self.metrics[phase].items():
             if metric_name != 'loss':
                 metric.update(y_pred, y)
 
         return loss
+
+    def register_sample_image(self, y_pred: torch.Tensor, phase: str):
+        if phase in self.images and self.images[phase].shape[0] < self.max_image_samples:
+            self.images[phase] = torch.cat([self.images[phase], self.color_codes[y_pred]])[:self.max_image_samples]
+        elif phase not in self.images:
+            self.images[phase] = self.color_codes[y_pred]
 
     def on_train_epoch_end(self):
         return self.__on_epoch_end('train')
@@ -121,11 +141,20 @@ class SegformerModule(pl.LightningModule):
 
     def __on_epoch_end(self, phase):
         self.__log_metrics(phase)
+        self.__publish_images(phase)
 
     def __log_metrics(self, phase):
         for metric_name, metric in self.metrics[phase].items():
             self.log(f'{phase}/epoch/{metric_name}', metric.compute())
             metric.reset()
+
+    def __publish_images(self, phase):
+        images = self.images[phase].cpu().numpy()
+        for idx in range(self.max_image_samples):
+            image = File.as_image(images[idx] / 255)
+            self.logger.experiment[f'{phase}/sample/image_{idx}'].append(image)
+
+        del self.images[phase]
 
     def configure_optimizers(self):
         return Adam(self.parameters(), lr=self.lr)

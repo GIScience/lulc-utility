@@ -85,7 +85,8 @@ def train(cfg: DictConfig) -> None:
                             variant=cfg.model.variant,
                             lr=cfg.model.lr,
                             device=device,
-                            class_weights=cfg.data.class_weights)
+                            class_weights=cfg.data.class_weights,
+                            color_codes=dataset.color_codes)
 
     log.info(f'Training model for {cfg.model.max_epochs} epochs')
     trainer = pl.Trainer(logger=neptune_logger,
