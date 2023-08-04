@@ -152,19 +152,9 @@ def segment_describe(request: Request):
     return request.app.state.labels
 
 
-version = APIRouter(prefix='/v1')
-version.include_router(segment)
-
 app = FastAPI(lifespan=configure_dependencies)
-app.include_router(version)
+app.include_router(segment)
 app.include_router(health)
-
-
-@app.get('/', include_in_schema=False)
-def docs_redirect():  # dead:disable
-    """Redirect to the documentation of the API."""
-    return RedirectResponse(url='/docs')
-
 
 if __name__ == '__main__':
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv('LULC_UTILITY_API_PORT', 8000)))

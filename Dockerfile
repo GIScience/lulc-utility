@@ -1,18 +1,20 @@
-FROM mambaorg/micromamba:1.4.9-focal-cuda-11.7.1
+FROM condaforge/mambaforge:23.1.0-4 AS build
 
-USER root
-RUN apt update && \
-    apt install -y libsm6 libxext6
+COPY environment_deploy.yaml environment.yaml
 
-USER $MAMBA_USER
+RUN mamba env create -f environment.yaml && \
+    mamba install -c conda-forge conda-pack && \
+    conda-pack -f --ignore-missing-files -n ca-lulc-utility -o /tmp/env.tar && \
+    mkdir /venv && \
+    cd /venv && \
+    tar xf /tmp/env.tar && \
+    rm /tmp/env.tar  && \
+    /venv/bin/conda-unpack
 
-COPY environment.yaml .
+FROM debian:buster AS runtime
 
-RUN micromamba install -y -n base -f environment.yaml -v && \
-    micromamba clean --all --yes
-
-USER root
 WORKDIR /ca-lulc-utility
+COPY --from=build /venv /ca-lulc-utility/venv
 
 COPY app app
 COPY conf conf
@@ -20,12 +22,9 @@ COPY data data
 COPY lulc lulc
 COPY example/data cache/sentinelhub/imagery_v1
 
-RUN useradd lulc && \
-    chown -R lulc /ca-lulc-utility
-
-USER lulc
-
 ENV TRANSFORMERS_CACHE='/tmp'
 ENV PYTHONPATH "${PYTHONPATH}:/ca-lulc-utility/lulc"
 
-CMD ["uvicorn", "app.api:app", "--host", "0.0.0.0", "--port", "8000"]
+SHELL ["/bin/bash", "-c"]
+ENTRYPOINT source /ca-lulc-utility/venv/bin/activate && \
+           uvicorn app.api:app --host 0.0.0.0 --port 8000 --root-path '/api/lulc/v1'
