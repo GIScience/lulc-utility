@@ -5,7 +5,7 @@ import uuid
 from contextlib import asynccontextmanager
 from functools import lru_cache
 from pathlib import Path
-from typing import Tuple
+from typing import Tuple, Callable
 
 import hydra
 import numpy as np
@@ -20,11 +20,10 @@ from rasterio.crs import CRS
 from starlette.background import BackgroundTask
 from starlette.requests import Request
 from starlette.responses import Response, FileResponse
-from torchvision import transforms
 
 from lulc.data.label import resolve_labels
-from lulc.data.tx import Normalize, Stack, NanToNum, ExtendShape, ToTensor, ToNumpy
-from lulc.model.registry import NeptuneModelRegistry
+from lulc.data.tx.array import Normalize, Stack, NanToNum, AdjustShape
+from lulc.model.ops.download import NeptuneModelDownload
 from lulc.ops.exception import OperatorValidationException, OperatorInteractionException
 from lulc.ops.sentinelhub_operator import SentinelHubOperator, ImageryStore
 
@@ -44,26 +43,25 @@ async def configure_dependencies(app: FastAPI):
 
     app.state.labels = resolve_labels(Path(cfg.data.dir), cfg.data.descriptor.labels)
 
-    registry = NeptuneModelRegistry(model_key=cfg.neptune.model.key,
+    registry = NeptuneModelDownload(model_key=cfg.neptune.model.key,
                                     project=cfg.neptune.project,
                                     api_key=cfg.neptune.api_token,
                                     cache_dir=Path(cfg.cache.dir))
     onnx_model = registry.download_model_version(cfg.serve.model_version)
     app.state.inference_session = InferenceSession(str(onnx_model))
 
-    app.state.tx = transforms.Compose([
-        NanToNum(layers=['s1.tif', 's2.tif'], subset='imagery'),
-        Stack(subset='imagery'),
-        ToTensor(),
-        Normalize(subset='imagery', mean=cfg.data.normalize.mean, std=cfg.data.normalize.std),
-        ToNumpy(),
-        ExtendShape(subset='imagery')
-    ])
+    def tx(x):
+        x = NanToNum(layers=['s1.tif', 's2.tif'], subset='imagery')(x)
+        x = Stack(subset='imagery')(x)
+        x = Normalize(subset='imagery', mean=cfg.data.normalize.mean, std=cfg.data.normalize.std)(x)
+        return AdjustShape(subset='imagery')(x)
+
+    app.state.tx = tx
     yield
 
 
 @lru_cache(maxsize=32)
-def __predict(imagery_store: ImageryStore, inference_session: InferenceSession, tx: transforms.Compose,
+def __predict(imagery_store: ImageryStore, inference_session: InferenceSession, tx: Callable,
               area_coords: Tuple[float, float, float, float], start_date: str, end_date: str):
     try:
         imagery, imagery_size = imagery_store.imagery(area_coords, start_date, end_date)

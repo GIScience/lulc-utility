@@ -9,7 +9,8 @@ from torchvision import transforms
 
 from lulc.data.stats import dataset_iter_statistics
 from lulc.data.dataset import AreaDataset, center_crop_collate_fn
-from lulc.data.tx import Stack, ReclassifyMerge, NanToNum, ToTensor
+from lulc.data.tx.array import Stack, ReclassifyMerge, NanToNum
+from lulc.data.tx.tensor import ToTensor
 
 log = logging.getLogger(__name__)
 

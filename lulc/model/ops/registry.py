@@ -12,7 +12,7 @@ log = logging.getLogger(__name__)
 
 class NeptuneModelRegistry:
     """
-    Enables interaction with Neptune.ai model registry
+    Enables interaction with Neptune.ai model ops
     More: https://docs.neptune.ai/model_registry/overview/
     """
 
@@ -20,7 +20,7 @@ class NeptuneModelRegistry:
         self.__model_key = model_key
         self.__project = project
         self.__api_token = api_key
-        self.__cache_dir = cache_dir / 'registry'
+        self.__cache_dir = cache_dir / 'ops'
         self.__cache_dir.mkdir(parents=True, exist_ok=True)
 
     def register_version(self, model: SegformerModule, run_name: str, run_url: str):
@@ -57,14 +57,3 @@ class NeptuneModelRegistry:
         model_version.sync()
 
         log.info(f'Model {neptune_model} version has been registered: {model_version.get_url()}')
-
-    def download_model_version(self, neptune_model_version_id: str) -> Path:
-        model_file = self.__cache_dir / f'{neptune_model_version_id}.onnx'
-        if not model_file.exists():
-            model_version = neptune.init_model_version(
-                with_id=neptune_model_version_id,
-                project=self.__project,
-                api_token=self.__api_token,
-            )
-            model_version['model'].download(str(model_file))
-        return model_file

@@ -9,7 +9,8 @@ RUN mamba env create -f environment.yaml && \
     cd /venv && \
     tar xf /tmp/env.tar && \
     rm /tmp/env.tar  && \
-    /venv/bin/conda-unpack
+    /venv/bin/conda-unpack && \
+    mamba clean --all --yes
 
 FROM debian:buster AS runtime
 

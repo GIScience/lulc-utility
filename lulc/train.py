@@ -14,9 +14,10 @@ from torch.utils.data import DataLoader, random_split
 from torchvision import transforms
 
 from lulc.data.dataset import AreaDataset, random_crop_collate_fn, center_crop_collate_fn
-from lulc.data.tx import Normalize, Stack, ReclassifyMerge, ToTensor, NanToNum
+from lulc.data.tx.array import Normalize, Stack, ReclassifyMerge, NanToNum
+from lulc.data.tx.tensor import ToTensor
 from lulc.model.model import SegformerModule
-from lulc.model.registry import NeptuneModelRegistry
+from model.ops.registry import NeptuneModelRegistry
 
 log = logging.getLogger(__name__)
 
@@ -56,8 +57,8 @@ def train(cfg: DictConfig) -> None:
             NanToNum(layers=['s1.tif', 's2.tif']),
             Stack(),
             ReclassifyMerge(),
-            ToTensor(),
-            Normalize(mean=cfg.data.normalize.mean, std=cfg.data.normalize.std)
+            Normalize(mean=cfg.data.normalize.mean, std=cfg.data.normalize.std),
+            ToTensor()
         ])
     )
 

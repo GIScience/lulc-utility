@@ -7,11 +7,10 @@ import pytest
 from fastapi.testclient import TestClient
 from onnxruntime import InferenceSession
 from tifffile import imread
-from torchvision import transforms
 
 from app.api import app
 from lulc.data.label import LabelsDescriptor
-from lulc.data.tx import Normalize, Stack, NanToNum, ExtendShape, ToTensor, ToNumpy
+from lulc.data.tx.array import Normalize, Stack, NanToNum, AdjustShape
 from lulc.ops.sentinelhub_operator import ImageryStore
 
 
@@ -47,14 +46,14 @@ def mocked_client():
         ["unknown", "built-up", "forest", "water", "agriculture"]
     )
     app.state.inference_session = InferenceSession(str(Path(__file__).parent / 'test.onnx'))
-    app.state.tx = transforms.Compose([
-        NanToNum(layers=['s1.tif', 's2.tif'], subset='imagery'),
-        Stack(subset='imagery'),
-        ToTensor(),
-        Normalize(subset='imagery', mean=np.random.random(9), std=np.random.random(9)),
-        ToNumpy(),
-        ExtendShape(subset='imagery')
-    ])
+
+    def tx(x):
+        x = NanToNum(layers=['s1.tif', 's2.tif'], subset='imagery')(x)
+        x = Stack(subset='imagery')(x)
+        x = Normalize(subset='imagery', mean=np.random.random(9), std=np.random.random(9))(x)
+        return AdjustShape(subset='imagery')(x)
+
+    app.state.tx = tx
     yield client
 
 

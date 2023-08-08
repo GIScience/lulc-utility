@@ -8,7 +8,7 @@ from torch.utils.data import Dataset, default_collate
 from torchvision import transforms
 
 from lulc.data.label import resolve_labels
-from lulc.data.tx import RandomCrop, CenterCrop
+from lulc.data.tx.tensor import RandomCrop, CenterCrop
 from lulc.ops.osm_operator import OhsomeOps
 from lulc.ops.sentinelhub_operator import SentinelHubOperator
 

@@ -2,9 +2,6 @@ from abc import ABC
 from typing import List
 
 import numpy as np
-import torch
-import torchvision.transforms.functional as F
-from torchvision import transforms
 
 
 class Tx(ABC):
@@ -27,14 +24,13 @@ class Stack(Tx):
         return sample
 
 
-class ExtendShape(Tx):
+class AdjustShape(Tx):
 
     def __init__(self, subset='x'):
         super().__init__(subset)
 
     def __call__(self, sample):
-        for subset_name, subset in sample.items():
-            sample[subset_name] = subset[np.newaxis, ...]
+        sample[self.subset] = np.transpose(sample[self.subset], [2, 0, 1])[np.newaxis, ...]
 
         return sample
 
@@ -68,59 +64,6 @@ class ReclassifyMerge(Tx):
         return sample
 
 
-class ToTensor:
-
-    def __call__(self, sample):
-        for subset_name, subset in sample.items():
-            tensor = torch.from_numpy(subset)
-            if len(tensor.shape) == 3:
-                tensor = tensor.permute(2, 0, 1)
-            elif len(tensor.shape) == 4:
-                tensor = tensor.permute(0, 3, 1, 2)
-
-            sample[subset_name] = tensor
-
-        return sample
-
-
-class ToNumpy:
-
-    def __call__(self, sample):
-        for subset_name, subset in sample.items():
-            sample[subset_name] = subset.numpy()
-
-        return sample
-
-
-class RandomCrop:
-
-    def __init__(self, out_height=256, out_width=256):
-        self.output_size = (out_height, out_width)
-
-    def __call__(self, sample):
-        x = sample['x']
-        y = sample['y']
-        i, j, h, w = transforms.RandomCrop.get_params(x, output_size=self.output_size)
-        return {
-            'x': F.crop(x, i, j, h, w),
-            'y': F.crop(y, i, j, h, w)
-        }
-
-
-class CenterCrop:
-
-    def __init__(self, out_height=256, out_width=256):
-        self.output_size = [out_height, out_width]
-
-    def __call__(self, sample):
-        x = sample['x']
-        y = sample['y']
-        return {
-            'x': F.center_crop(x, self.output_size),
-            'y': F.center_crop(y, self.output_size)
-        }
-
-
 class NanToNum(Tx):
 
     def __init__(self, layers: List[str], subset='x', fill_value=0.0):
@@ -137,10 +80,14 @@ class NanToNum(Tx):
 
 
 class Normalize(Tx):
+
     def __init__(self, mean: List[float], std: List[float], subset='x'):
         super().__init__(subset)
-        self.normalize = transforms.Normalize(mean, std)
+        self.mean = mean
+        self.std = std
 
     def __call__(self, sample):
-        sample[self.subset] = self.normalize(sample[self.subset])
+        dtype = sample[self.subset].dtype
+        sample[self.subset] = (sample[self.subset] - self.mean) / self.std
+        sample[self.subset] = sample[self.subset].astype(dtype)
         return sample
