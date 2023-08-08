@@ -45,4 +45,4 @@ class EnergyContext:
                 self.experiment['monitoring/energy'].upload(f'{temp_dir}/df.csv')
                 self.experiment.sync()
         else:
-            log.warning(f'No readable devices to publish energy consumption data')
+            log.warning('No readable devices to publish energy consumption data')

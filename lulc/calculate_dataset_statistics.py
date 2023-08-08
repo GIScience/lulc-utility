@@ -12,7 +12,7 @@ from lulc.data.dataset import AreaDataset
 from lulc.data.stats import dataset_iter_statistics
 from lulc.data.tx.array import Stack, ReclassifyMerge, NanToNum
 from lulc.data.tx.tensor import ToTensor
-from ops.imagery_store_operator import resolve_imagery_store
+from lulc.ops.imagery_store_operator import resolve_imagery_store
 
 log = logging.getLogger(__name__)
 

@@ -20,9 +20,9 @@ from lulc.data.collate import random_crop_collate_fn, center_crop_collate_fn
 from lulc.data.dataset import AreaDataset
 from lulc.data.tx.array import Normalize, Stack, ReclassifyMerge, NanToNum
 from lulc.model.model import SegformerModule
-from model.ops.registry import NeptuneModelRegistry
-from ops.imagery_store_operator import resolve_imagery_store
-from monitoring.energy import EnergyContext
+from lulc.model.ops.registry import NeptuneModelRegistry
+from lulc.ops.imagery_store_operator import resolve_imagery_store
+from lulc.monitoring.energy import EnergyContext
 
 log = logging.getLogger(__name__)
 
