@@ -1,0 +1,6 @@
+operator: earth_engine
+service_account: ${oc.env:GOOGLE_EARTH_ENGINE_SERVICE_ACCOUNT}
+key_file_location: ${oc.env:GOOGLE_EARTH_ENGINE_KEY_FILE_LOCATION}
+s1_bands: [ VV, VH ]
+s2_bands: [ B2, B3, B4, B8, B11, B12 ]
+dem_bands: [ DEM ]

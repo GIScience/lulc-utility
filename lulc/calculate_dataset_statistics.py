@@ -7,10 +7,12 @@ from omegaconf import DictConfig
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
+from data.collate import center_crop_collate_fn
+from lulc.data.dataset import AreaDataset
 from lulc.data.stats import dataset_iter_statistics
-from lulc.data.dataset import AreaDataset, center_crop_collate_fn
 from lulc.data.tx.array import Stack, ReclassifyMerge, NanToNum
 from lulc.data.tx.tensor import ToTensor
+from ops.imagery_store_operator import resolve_imagery_store
 
 log = logging.getLogger(__name__)
 
@@ -24,15 +26,15 @@ def calculate_dataset_statistics(cfg: DictConfig) -> None:
     :param cfg: underlying Hydra configuration
     :return: mean, std and class weights
     """
+    log.info(f'Configuring remote sensing imagery store: {cfg.imagery.operator}')
+    imagery_store = resolve_imagery_store(cfg.imagery, cache_dir=Path(cfg.cache.dir))
 
     dataset = AreaDataset(
         area_descriptor_ver=cfg.data.descriptor.area,
         label_descriptor_ver=cfg.data.descriptor.labels,
-        imagery_descriptor_ver=cfg.data.descriptor.imagery,
-        sentinelhub_api_id=cfg.sentinel_hub.api.id,
-        sentinelhub_secret=cfg.sentinel_hub.api.secret,
         data_dir=Path(cfg.data.dir),
         cache_dir=Path(cfg.cache.dir),
+        imagery_store=imagery_store,
         deterministic_tx=transforms.Compose([
             NanToNum(layers=['s1.tif', 's2.tif']),
             Stack(),

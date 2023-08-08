@@ -6,7 +6,6 @@ crop:
   width: 1024
 descriptor:
   area: DE1_DE2
-  imagery: v1
   labels: v1
 class_weights:
   - 0.8974036574363708

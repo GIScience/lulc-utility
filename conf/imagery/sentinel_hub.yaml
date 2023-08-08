@@ -1,0 +1,5 @@
+operator: sentinel_hub
+api_id: ${oc.env:SENTINELHUB_API_ID}
+api_secret: ${oc.env:SENTINELHUB_API_SECRET}
+evalscript_dir: data/imagery
+evalscript_name: imagery_v1

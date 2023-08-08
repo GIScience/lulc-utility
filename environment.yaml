@@ -5,6 +5,7 @@ channels:
   - nvidia
   - defaults
 dependencies:
+  - earthengine-api=0.1.362
   - geopandas=0.13.2
   - geos=3.11.1
   - geotiff=1.7.1

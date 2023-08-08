@@ -25,7 +25,7 @@ from lulc.data.label import resolve_labels
 from lulc.data.tx.array import Normalize, Stack, NanToNum, AdjustShape
 from lulc.model.ops.download import NeptuneModelDownload
 from lulc.ops.exception import OperatorValidationException, OperatorInteractionException
-from lulc.ops.sentinelhub_operator import SentinelHubOperator, ImageryStore
+from lulc.ops.imagery_store_operator import ImageryStore, resolve_imagery_store
 
 log = logging.getLogger(__name__)
 
@@ -35,11 +35,7 @@ async def configure_dependencies(app: FastAPI):
     hydra.initialize_config_dir(config_dir=os.getenv('LULC_UTILITY_APP_CONFIG_DIR', str(Path('conf').absolute())), version_base=None)
     cfg = compose(config_name='config')
 
-    app.state.imagery_store = SentinelHubOperator(api_id=cfg.sentinel_hub.api.id,
-                                                  api_secret=cfg.sentinel_hub.api.secret,
-                                                  evalscript_dir=Path(cfg.data.dir) / 'imagery',
-                                                  evalscript_name=f'imagery_{cfg.data.descriptor.imagery}',
-                                                  cache_dir=Path(cfg.cache.dir) / 'sentinelhub')
+    app.state.imagery_store = resolve_imagery_store(cfg.imagery, cache_dir=Path(cfg.cache.dir))
 
     app.state.labels = resolve_labels(Path(cfg.data.dir), cfg.data.descriptor.labels)
 

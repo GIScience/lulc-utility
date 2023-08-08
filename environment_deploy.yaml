@@ -3,6 +3,7 @@ channels:
   - conda-forge
   - defaults
 dependencies:
+  - earthengine-api=0.1.362
   - httpx=0.24.1
   - numpy=1.25.0
   - pandas=2.0.3

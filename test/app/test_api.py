@@ -11,7 +11,7 @@ from tifffile import imread
 from app.api import app
 from lulc.data.label import LabelsDescriptor
 from lulc.data.tx.array import Normalize, Stack, NanToNum, AdjustShape
-from lulc.ops.sentinelhub_operator import ImageryStore
+from lulc.ops.imagery_store_operator import ImageryStore
 
 
 class TestImageryStore(ImageryStore):

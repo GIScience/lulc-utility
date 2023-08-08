@@ -21,6 +21,7 @@ from lulc.data.dataset import AreaDataset
 from lulc.data.tx.array import Normalize, Stack, ReclassifyMerge, NanToNum
 from lulc.model.model import SegformerModule
 from model.ops.registry import NeptuneModelRegistry
+from ops.imagery_store_operator import resolve_imagery_store
 
 log = logging.getLogger(__name__)
 
@@ -48,17 +49,17 @@ def train(cfg: DictConfig) -> None:
     neptune_logger.log_hyperparams(params=cfg.model)
     neptune_logger.experiment['data/area'] = cfg.data.descriptor.area
     neptune_logger.experiment['data/label'] = cfg.data.descriptor.labels
-    neptune_logger.experiment['data/imagery'] = cfg.data.descriptor.imagery
+    neptune_logger.experiment['data/imagery'] = cfg.imagery.operator
 
-    log.info(f'Initializing dataset (area: {cfg.data.descriptor.area}, '
-             f'label: {cfg.data.descriptor.labels}, imagery: {cfg.data.descriptor.imagery})')
+    log.info(f'Configuring remote sensing imagery store: {cfg.imagery.operator}')
+    imagery_store = resolve_imagery_store(cfg.imagery, cache_dir=Path(cfg.cache.dir))
+
+    log.info(f'Initializing dataset (area: {cfg.data.descriptor.area}, label: {cfg.data.descriptor.labels})')
 
     dataset = AreaDataset(
         area_descriptor_ver=cfg.data.descriptor.area,
         label_descriptor_ver=cfg.data.descriptor.labels,
-        imagery_descriptor_ver=cfg.data.descriptor.imagery,
-        sentinelhub_api_id=cfg.sentinel_hub.api.id,
-        sentinelhub_secret=cfg.sentinel_hub.api.secret,
+        imagery_store=imagery_store,
         data_dir=Path(cfg.data.dir),
         cache_dir=Path(cfg.cache.dir),
         deterministic_tx=transforms.Compose([

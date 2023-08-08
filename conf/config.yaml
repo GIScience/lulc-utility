@@ -3,6 +3,7 @@ defaults:
   - data: baseline
   - model: baseline
   - serve: local
+  - imagery: sentinel_hub
 
 cache:
   dir: ./cache
@@ -21,10 +22,4 @@ neptune:
   mode: ${oc.env:NEPTUNE_MODE}
   model:
     key: LULC
-
-sentinel_hub:
-  api:
-    id: ${oc.env:SENTINELHUB_API_ID}
-    secret: ${oc.env:SENTINELHUB_API_SECRET}
-
 
