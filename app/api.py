@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field
 from rasterio.crs import CRS
 from starlette.background import BackgroundTask
 from starlette.requests import Request
-from starlette.responses import Response, FileResponse, RedirectResponse
+from starlette.responses import Response, FileResponse
 from torchvision import transforms
 
 from lulc.data.label import resolve_labels

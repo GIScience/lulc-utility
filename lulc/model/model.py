@@ -1,6 +1,7 @@
 from typing import List, Any
 
 import lightning.pytorch as pl
+import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
 from neptune.types import File
@@ -8,6 +9,8 @@ from torch.optim import Adam
 from torchmetrics import MeanMetric, JaccardIndex, Accuracy, F1Score, Precision, Recall
 from transformers import SegformerForSemanticSegmentation, \
     SegformerConfig
+
+from lulc.model.metrics import ConfusionMatrix2D, PlotMetric
 
 MODEL_VARIANTS = {
     'MiT-b0': {
@@ -81,14 +84,14 @@ class SegformerModule(pl.LightningModule):
         self.metrics = {}
         for phase in ['train', 'val', 'test']:
             self.metrics[phase] = {
-                'loss': MeanMetric().to(device),
-                'iou': JaccardIndex(task='multiclass', num_classes=num_labels).to(device),
-                'acc': Accuracy(task="multiclass", num_classes=num_labels).to(device),
-                'f1': F1Score(task='multiclass', num_classes=num_labels).to(device),
-                'precision': Precision(task='multiclass', num_classes=num_labels).to(device),
-                'recall': Recall(task='multiclass', num_classes=num_labels).to(device)
+                'loss': MeanMetric(),
+                'iou': JaccardIndex(task='multiclass', num_classes=num_labels),
+                'acc': Accuracy(task="multiclass", num_classes=num_labels),
+                'f1': F1Score(task='multiclass', num_classes=num_labels),
+                'precision': Precision(task='multiclass', num_classes=num_labels),
+                'recall': Recall(task='multiclass', num_classes=num_labels),
+                'confusion_matrix': ConfusionMatrix2D(task='multiclass', num_classes=num_labels, normalize='true', labels=labels)
             }
-
 
     def forward(self, x) -> Any:
         return self.model(x).logits
@@ -114,13 +117,13 @@ class SegformerModule(pl.LightningModule):
 
         y_pred = upsampled_logits.argmax(dim=1)
 
-        self.metrics[phase]['loss'].update(loss)
+        self.metrics[phase]['loss'].update(loss.cpu())
         self.log(f'{phase}/batch/loss', loss, prog_bar=True)
         self.register_sample_image(y_pred, phase)
 
         for metric_name, metric in self.metrics[phase].items():
             if metric_name != 'loss':
-                metric.update(y_pred, y)
+                metric.update(y_pred.cpu(), y.cpu())
 
         return loss
 
@@ -145,12 +148,17 @@ class SegformerModule(pl.LightningModule):
 
     def __log_metrics(self, phase):
         for metric_name, metric in self.metrics[phase].items():
-            self.log(f'{phase}/epoch/{metric_name}', metric.compute())
+            if isinstance(metric, PlotMetric):
+                image = File.as_image(metric.plot())
+                self.logger.experiment[f'{phase}/epoch/{metric_name}'].append(image)
+                plt.cla()
+            else:
+                self.log(f'{phase}/epoch/{metric_name}', metric.compute())
             metric.reset()
 
     def __publish_images(self, phase):
         images = self.images[phase].cpu().numpy()
-        for idx in range(self.max_image_samples):
+        for idx in range(min(self.max_image_samples, images.shape[0])):
             image = File.as_image(images[idx] / 255)
             self.logger.experiment[f'{phase}/sample/image_{idx}'].append(image)
 

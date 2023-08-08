@@ -30,7 +30,7 @@ def test_step():
                             color_codes=[[0, 0, 0], [255, 0, 0]])
 
     for metric in model.metrics['test'].values():
-        assert metric.compute() == torch.tensor(0) or torch.isnan(metric.compute())
+        assert torch.all(metric.compute() == 0) or torch.all(torch.isnan(metric.compute()))
 
     batch = {
         'x': torch.rand((2, 2, 256, 256)),
@@ -41,4 +41,4 @@ def test_step():
     assert loss != torch.nan
 
     for metric in model.metrics['test'].values():
-        assert metric.compute() != torch.tensor(0) and not torch.isnan(metric.compute())
+        assert torch.all(metric.compute() != 0) and not torch.all(torch.isnan(metric.compute()))
