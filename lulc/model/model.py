@@ -1,3 +1,4 @@
+import logging
 from typing import List, Any
 
 import lightning.pytorch as pl
@@ -44,6 +45,8 @@ MODEL_VARIANTS = {
         'decoder_hidden_size': 768
     }
 }
+
+log = logging.getLogger(__name__)
 
 
 class SegformerModule(pl.LightningModule):
@@ -92,6 +95,11 @@ class SegformerModule(pl.LightningModule):
                 'recall': Recall(task='multiclass', num_classes=num_labels),
                 'confusion_matrix': ConfusionMatrix2D(task='multiclass', num_classes=num_labels, normalize='true', labels=labels)
             }
+
+    def on_fit_start(self) -> None:
+        if torch.are_deterministic_algorithms_enabled() and not torch.is_deterministic_algorithms_warn_only_enabled():
+            log.warning('Deterministic transform has been set (warn only mode enabled)')
+            torch.use_deterministic_algorithms(True, warn_only=True)
 
     def forward(self, x) -> Any:
         return self.model(x).logits

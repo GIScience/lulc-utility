@@ -7,6 +7,10 @@ defaults:
 cache:
   dir: ./cache
 
+environment:
+  deterministic: False
+  profiler:
+
 hydra:
   run:
     dir: ./outputs/${hydra.job.name}/${now:%Y-%m-%d_%H-%M-%S}

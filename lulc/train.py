@@ -7,6 +7,7 @@ import hydra
 import lightning.pytorch as pl
 import torch
 from coolname import generate_slug
+from lightning import seed_everything
 from hydra.core.hydra_config import HydraConfig
 from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
 from lightning.pytorch.loggers import NeptuneLogger
@@ -30,6 +31,10 @@ def train(cfg: DictConfig) -> None:
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     run_name = generate_slug(pattern=3)
     output_dir = HydraConfig.get().runtime.output_dir
+
+    if cfg.environment.deterministic:
+        seed_everything(42, workers=True)
+        torch.use_deterministic_algorithms(True, warn_only=True)
 
     log.info(f'Model training initiated: {run_name}')
     neptune_logger = NeptuneLogger(
@@ -108,7 +113,9 @@ def train(cfg: DictConfig) -> None:
                          max_epochs=cfg.model.max_epochs,
                          callbacks=[early_stopping, model_checkpoint],
                          log_every_n_steps=cfg.model.log_every_n_steps,
-                         gradient_clip_val=cfg.model.gradient_clip_val)
+                         gradient_clip_val=cfg.model.gradient_clip_val,
+                         deterministic=cfg.environment.deterministic,
+                         profiler=cfg.environment.profiler)
     trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
 
     log.info(f'Checking-out best model: {model_checkpoint.best_model_path}')
