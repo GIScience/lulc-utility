@@ -47,13 +47,13 @@ def mocked_client():
     )
     app.state.inference_session = InferenceSession(str(Path(__file__).parent / 'test.onnx'))
 
-    def tx(x):
+    def test_app_transformation_procedure(x):
         x = NanToNum(layers=['s1.tif', 's2.tif'], subset='imagery')(x)
         x = Stack(subset='imagery')(x)
         x = Normalize(subset='imagery', mean=np.random.random(9), std=np.random.random(9))(x)
         return AdjustShape(subset='imagery')(x)
 
-    app.state.tx = tx
+    app.state.tx = test_app_transformation_procedure
     yield client
 
 

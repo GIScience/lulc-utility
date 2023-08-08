@@ -7,15 +7,17 @@ import hydra
 import lightning.pytorch as pl
 import torch
 from coolname import generate_slug
-from lightning.pytorch.callbacks import EarlyStopping
+from hydra.core.hydra_config import HydraConfig
+from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
 from lightning.pytorch.loggers import NeptuneLogger
 from omegaconf import DictConfig
 from torch.utils.data import DataLoader, random_split
 from torchvision import transforms
 
-from lulc.data.dataset import AreaDataset, random_crop_collate_fn, center_crop_collate_fn
+from lulc.data.augment import build_random_tx
+from lulc.data.collate import random_crop_collate_fn, center_crop_collate_fn
+from lulc.data.dataset import AreaDataset
 from lulc.data.tx.array import Normalize, Stack, ReclassifyMerge, NanToNum
-from lulc.data.tx.tensor import ToTensor
 from lulc.model.model import SegformerModule
 from model.ops.registry import NeptuneModelRegistry
 
@@ -27,6 +29,7 @@ def train(cfg: DictConfig) -> None:
     torch.set_float32_matmul_precision(cfg.model.matmul_precision)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     run_name = generate_slug(pattern=3)
+    output_dir = HydraConfig.get().runtime.output_dir
 
     log.info(f'Model training initiated: {run_name}')
     neptune_logger = NeptuneLogger(
@@ -57,8 +60,7 @@ def train(cfg: DictConfig) -> None:
             NanToNum(layers=['s1.tif', 's2.tif']),
             Stack(),
             ReclassifyMerge(),
-            Normalize(mean=cfg.data.normalize.mean, std=cfg.data.normalize.std),
-            ToTensor()
+            Normalize(mean=cfg.data.normalize.mean, std=cfg.data.normalize.std)
         ])
     )
 
@@ -72,6 +74,11 @@ def train(cfg: DictConfig) -> None:
 
     log.info(f'Performing random dataset split (train: {train_size}, val: {val_size}, test: {test_size})')
     train_dataset, val_dataset, test_dataset = random_split(dataset, [train_size, val_size, test_size])
+
+    log.info(f'Attaching random transformations to the training dataset: {list(cfg.model.augment.keys())}')
+    train_dataset.dataset.random_tx = build_random_tx(cfg.model.augment)
+
+    log.info('Configuring data loaders')
     loader_p = partial(DataLoader, batch_size=cfg.model.batch_size,
                        pin_memory=True,
                        num_workers=cfg.model.workers,
@@ -81,23 +88,31 @@ def train(cfg: DictConfig) -> None:
     test_loader = loader_p(dataset=test_dataset, collate_fn=center_crop_collate_fn(cfg.data.crop.height, cfg.data.crop.width))
 
     log.info(f'Creating a model ({cfg.model.variant})')
-    model = SegformerModule(num_channels=cfg.model.num_channels,
-                            labels=dataset.labels,
-                            variant=cfg.model.variant,
-                            lr=cfg.model.lr,
-                            device=device,
-                            class_weights=cfg.data.class_weights,
-                            color_codes=dataset.color_codes)
-
+    params = dict(
+        num_channels=cfg.model.num_channels,
+        labels=dataset.labels,
+        variant=cfg.model.variant,
+        lr=cfg.model.lr,
+        device=device,
+        class_weights=cfg.data.class_weights,
+        color_codes=dataset.color_codes,
+        max_image_samples=cfg.model.max_image_samples
+    )
+    model = SegformerModule(**params)
     log.info(f'Training model for {cfg.model.max_epochs} epochs')
+
+    early_stopping = EarlyStopping(monitor='val/epoch/loss', patience=cfg.model.early_stopping.patience)
+    model_checkpoint = ModelCheckpoint(dirpath=f'{output_dir}/checkpoints', save_top_k=2, monitor='val/epoch/loss')
+
     trainer = pl.Trainer(logger=neptune_logger,
                          max_epochs=cfg.model.max_epochs,
-                         callbacks=[
-                             EarlyStopping(monitor='val/epoch/loss', mode='min',
-                                           patience=cfg.model.early_stopping.patience)
-                         ],
-                         log_every_n_steps=10)
+                         callbacks=[early_stopping, model_checkpoint],
+                         log_every_n_steps=cfg.model.log_every_n_steps,
+                         gradient_clip_val=cfg.model.gradient_clip_val)
     trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
+
+    log.info(f'Checking-out best model: {model_checkpoint.best_model_path}')
+    model = SegformerModule.load_from_checkpoint(model_checkpoint.best_model_path, **params)
 
     log.info('Performing model evaluation')
     trainer.test(model=model, dataloaders=test_loader)

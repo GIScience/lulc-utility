@@ -158,7 +158,7 @@ class SegformerModule(pl.LightningModule):
 
     def __publish_images(self, phase):
         images = self.images[phase].cpu().numpy()
-        for idx in range(min(self.max_image_samples, images.shape[0])):
+        for idx in range(min(images.shape[0], self.max_image_samples)):
             image = File.as_image(images[idx] / 255)
             self.logger.experiment[f'{phase}/sample/image_{idx}'].append(image)
 

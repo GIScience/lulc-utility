@@ -4,11 +4,11 @@ from typing import Optional, List, Dict
 
 import pandas as pd
 import torch
-from torch.utils.data import Dataset, default_collate
+from torch.utils.data import Dataset
 from torchvision import transforms
 
 from lulc.data.label import resolve_labels
-from lulc.data.tx.tensor import RandomCrop, CenterCrop
+from lulc.data.tx.tensor import ToTensor
 from lulc.ops.osm_operator import OhsomeOps
 from lulc.ops.sentinelhub_operator import SentinelHubOperator
 
@@ -49,18 +49,19 @@ class AreaDataset(Dataset):
         item_path = self.item_cache / str(idx)
         x_path = f'{item_path}/x.pt'
         y_path = f'{item_path}/y.pt'
+
         if not item_path.exists() or len(os.listdir(item_path)) == 0:
             area = self.area_descriptor.iloc[idx]
             area_coords = tuple(area[['min_x', 'min_y', 'max_x', 'max_y']].values)
             imagery, imagery_size = self.sentinelhub.imagery(area_coords, area['start_date'], area['end_date'])
             labels = self.osm.labels(area_coords, area['end_date'], self.osm_lulc_mapping, imagery_size)
-            item = {
+
+            item = self.deterministic_tx({
                 'x': imagery,
                 'y': labels
-            }
+            })
 
             item_path.mkdir(parents=True, exist_ok=True)
-            item = self.deterministic_tx(item)
             torch.save(item['x'], x_path)
             torch.save(item['y'], y_path)
         else:
@@ -69,29 +70,10 @@ class AreaDataset(Dataset):
                 'y': torch.load(y_path)
             }
 
-        return item if self.random_tx is None else self.random_tx(item)
+        item = item if self.random_tx is None else self.random_tx(item)
+        return ToTensor()(item)
 
     @staticmethod
     def __interpret_label_descriptor(descriptor: pd.DataFrame) -> (List[str], Dict):
         osm_lulc = dict((str(k), v['filter']) for k, v in descriptor.iterrows())
         return ['unidentified'] + list(osm_lulc.keys()), osm_lulc
-
-
-def random_crop_collate_fn(crop_height: int, crop_width):
-    crop = RandomCrop(crop_height, crop_width)
-
-    def random_crop_collate(batch):
-        batch = [crop(sample) for sample in batch]
-        return default_collate(batch)
-
-    return random_crop_collate
-
-
-def center_crop_collate_fn(crop_height: int, crop_width: int):
-    crop = CenterCrop(crop_height, crop_width)
-
-    def random_crop_collate(batch):
-        batch = [crop(sample) for sample in batch]
-        return default_collate(batch)
-
-    return random_crop_collate
