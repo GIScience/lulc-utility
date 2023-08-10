@@ -12,7 +12,7 @@ log = logging.getLogger(__name__)
 
 class NeptuneModelRegistry:
     """
-    Enables interaction with Neptune.ai model ops
+    Enables interaction with Neptune.ai model operations
     More: https://docs.neptune.ai/model_registry/overview/
     """
 

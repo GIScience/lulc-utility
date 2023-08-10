@@ -59,5 +59,5 @@ def calculate_dataset_statistics(cfg: DictConfig) -> None:
     log.info(f'Class weights: {statistics.class_weights.tolist()}')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     calculate_dataset_statistics()

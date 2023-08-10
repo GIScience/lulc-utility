@@ -29,10 +29,12 @@ from lulc.ops.imagery_store_operator import ImageryStore, resolve_imagery_store
 
 log = logging.getLogger(__name__)
 
+config_dir = os.getenv('LULC_UTILITY_APP_CONFIG_DIR', str(Path('conf').absolute()))
+
 
 @asynccontextmanager
 async def configure_dependencies(app: FastAPI):
-    hydra.initialize_config_dir(config_dir=os.getenv('LULC_UTILITY_APP_CONFIG_DIR', str(Path('conf').absolute())), version_base=None)
+    hydra.initialize_config_dir(config_dir=config_dir, version_base=None)
     cfg = compose(config_name='config')
 
     app.state.imagery_store = resolve_imagery_store(cfg.imagery, cache_dir=Path(cfg.cache.dir))
@@ -151,4 +153,4 @@ app.include_router(segment)
 app.include_router(health)
 
 if __name__ == '__main__':
-    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv('LULC_UTILITY_API_PORT', 8000)))
+    uvicorn.run(app, host='0.0.0.0', port=int(os.getenv('LULC_UTILITY_API_PORT', 8000)), log_config=f'{config_dir}/logging/app/logging.yaml')

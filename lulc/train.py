@@ -1,3 +1,4 @@
+import copy
 import logging
 from functools import partial
 from pathlib import Path
@@ -55,7 +56,7 @@ def train(cfg: DictConfig) -> None:
     log.info(f'Configuring remote sensing imagery store: {cfg.imagery.operator}')
     imagery_store = resolve_imagery_store(cfg.imagery, cache_dir=Path(cfg.cache.dir))
 
-    with EnergyContext(neptune_logger.experiment) as energy_context:
+    with EnergyContext(neptune_logger.experiment, enable_tracking=cfg.environment.energy_tracker) as energy_context:
 
         log.info(f'Initializing dataset (area: {cfg.data.descriptor.area}, label: {cfg.data.descriptor.labels})')
 
@@ -85,6 +86,7 @@ def train(cfg: DictConfig) -> None:
         train_dataset, val_dataset, test_dataset = random_split(dataset, [train_size, val_size, test_size])
 
         log.info(f'Attaching random transformations to the training dataset: {list(cfg.model.augment.keys())}')
+        train_dataset.dataset = copy.deepcopy(train_dataset.dataset)
         train_dataset.dataset.random_tx = build_random_tx(cfg.model.augment)
 
         log.info('Configuring data loaders')
@@ -139,5 +141,5 @@ def train(cfg: DictConfig) -> None:
         registry.register_version(model, run_name, neptune_logger.experiment.get_url())
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     train()

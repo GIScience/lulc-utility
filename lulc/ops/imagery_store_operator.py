@@ -126,7 +126,7 @@ class EarthEngineOperator(ImageryStore):
     def imagery(self, area_coords: Tuple, start_date: str, end_date: str,
                 resolution: int = 10) -> tuple[Dict[str, np.ndarray], tuple[int, int]]:
         area_of_interest = ee.Geometry.BBox(*area_coords)
-        hex_string = hashlib.md5('_'.join([str(x) for x in area_coords]).encode("UTF-8")).hexdigest()
+        hex_string = hashlib.md5('_'.join([str(x) for x in area_coords]).encode('UTF-8')).hexdigest()
         item_id = uuid.UUID(hex=hex_string)
 
         s1_file = self.s1_cache_dir / f'{item_id}.tiff'

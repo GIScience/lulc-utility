@@ -19,11 +19,11 @@ class ConfusionMatrix2D(PlotMetric):
 
     def __init__(self,
                  labels: List[str],
-                 task: Literal["binary", "multiclass", "multilabel"],
+                 task: Literal['binary', 'multiclass', 'multilabel'],
                  threshold: float = 0.5,
                  num_classes: Optional[int] = None,
                  num_labels: Optional[int] = None,
-                 normalize: Optional[Literal["true", "pred", "all", "none"]] = None,
+                 normalize: Optional[Literal['true', 'pred', 'all', 'none']] = None,
                  ignore_index: Optional[int] = None,
                  validate_args: bool = True,
                  **kwargs: Any) -> None:

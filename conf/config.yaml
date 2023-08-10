@@ -11,6 +11,7 @@ cache:
 environment:
   deterministic: False
   profiler:
+  energy_tracker: True
 
 hydra:
   run:
@@ -22,4 +23,3 @@ neptune:
   mode: ${oc.env:NEPTUNE_MODE}
   model:
     key: LULC
-

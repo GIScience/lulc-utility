@@ -26,14 +26,14 @@ class TestImageryStore(ImageryStore):
 
 
 TEST_JSON = {
-    "area_coords": [
+    'area_coords': [
         7.3828125,
         47.5172006978394,
         7.55859375,
         47.63578359086485
     ],
-    "start_date": "2023-05-01",
-    "end_date": "2023-06-01"
+    'start_date': '2023-05-01',
+    'end_date': '2023-06-01'
 }
 
 
@@ -43,7 +43,7 @@ def mocked_client():
     app.state.imagery_store = TestImageryStore()
     app.state.labels = LabelsDescriptor(
         [[0, 0, 0], [255, 0, 0], [77, 200, 0], [130, 200, 250], [255, 255, 80]],
-        ["unknown", "built-up", "forest", "water", "agriculture"]
+        ['unknown', 'built-up', 'forest', 'water', 'agriculture']
     )
     app.state.inference_session = InferenceSession(str(Path(__file__).parent / 'test.onnx'))
 

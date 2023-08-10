@@ -89,7 +89,7 @@ class SegformerModule(pl.LightningModule):
             self.metrics[phase] = {
                 'loss': MeanMetric(),
                 'iou': JaccardIndex(task='multiclass', num_classes=num_labels),
-                'acc': Accuracy(task="multiclass", num_classes=num_labels),
+                'acc': Accuracy(task='multiclass', num_classes=num_labels),
                 'f1': F1Score(task='multiclass', num_classes=num_labels),
                 'precision': Precision(task='multiclass', num_classes=num_labels),
                 'recall': Recall(task='multiclass', num_classes=num_labels),
@@ -117,7 +117,7 @@ class SegformerModule(pl.LightningModule):
         x, y = batch['x'], batch['y']
 
         logits = self.model(x).logits
-        upsampled_logits = F.interpolate(logits, size=y.shape[-2:], mode="bilinear", align_corners=False)
+        upsampled_logits = F.interpolate(logits, size=y.shape[-2:], mode='bilinear', align_corners=False)
 
         loss = F.cross_entropy(upsampled_logits, y,
                                ignore_index=self.configuration.semantic_loss_ignore_index,
@@ -127,7 +127,7 @@ class SegformerModule(pl.LightningModule):
 
         self.metrics[phase]['loss'].update(loss.cpu())
         self.log(f'{phase}/batch/loss', loss, prog_bar=True)
-        self.register_sample_image(y_pred, phase)
+        self.register_sample_image(y, y_pred, phase)
 
         for metric_name, metric in self.metrics[phase].items():
             if metric_name != 'loss':
@@ -135,11 +135,13 @@ class SegformerModule(pl.LightningModule):
 
         return loss
 
-    def register_sample_image(self, y_pred: torch.Tensor, phase: str):
+    def register_sample_image(self, y: torch.Tensor, y_pred: torch.Tensor, phase: str):
         if phase in self.images and self.images[phase].shape[0] < self.max_image_samples:
-            self.images[phase] = torch.cat([self.images[phase], self.color_codes[y_pred]])[:self.max_image_samples]
+            image = torch.cat([y, y_pred], dim=2)
+            self.images[phase] = torch.cat([self.images[phase], self.color_codes[image]])[:self.max_image_samples]
         elif phase not in self.images:
-            self.images[phase] = self.color_codes[y_pred]
+            image = torch.cat([y, y_pred], dim=2)
+            self.images[phase] = self.color_codes[image]
 
     def on_train_epoch_end(self):
         return self.__on_epoch_end('train')

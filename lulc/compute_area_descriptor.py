@@ -19,5 +19,5 @@ def compute_area_descriptor(cfg: DictConfig) -> None:
     calculator.split(target_nuts_ids=cfg.area.target_nuts_ids)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     compute_area_descriptor()

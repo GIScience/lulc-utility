@@ -28,4 +28,4 @@ ENV PYTHONPATH "${PYTHONPATH}:/ca-lulc-utility/lulc"
 
 SHELL ["/bin/bash", "-c"]
 ENTRYPOINT source /ca-lulc-utility/venv/bin/activate && \
-           uvicorn app.api:app --host 0.0.0.0 --port 8000 --root-path '/api/lulc/v1'
+           uvicorn app.api:app --host 0.0.0.0 --port 8000 --root-path '/api/lulc/v1' --log-config=conf/logging/app/logging.yaml

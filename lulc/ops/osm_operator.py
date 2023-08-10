@@ -66,7 +66,7 @@ class OhsomeOps:
 
     @staticmethod
     def __calculate_id(text: str) -> uuid.UUID:
-        hex_string = hashlib.md5(text.encode("UTF-8")).hexdigest()
+        hex_string = hashlib.md5(text.encode('UTF-8')).hexdigest()
         return uuid.UUID(hex=hex_string)
 
     def __computer_raster(self, vector_data, utm):
