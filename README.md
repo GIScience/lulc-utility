@@ -90,9 +90,7 @@ python lulc/train.py
 
 ## Serve
 
-### Local
-
-This will spawn a REST-API that can serve the predictions for the model trained above.
+This will spawn a REST-API locally that can serve the predictions for the model trained above.
 Before starting the API, please check whether the same environmental variables as in [Train](#train) are set [^1].
 To serve the machine learning model choose the desired model version from
 the [Model Registry](https://app.neptune.ai/o/HeiGIT/org/climate-action/models?shortId=CA-LULC&type=model),
@@ -105,26 +103,7 @@ python app/api.py
 
 > Go to [localhost:8000](http://localhost:8000) to see the API in action.
 
-### Docker
-
-Using [`.env_template`](.env_template) as an example create [`.env`](.env) file  with proper credentials.
-
-Navigate to the project root directory and run the following command to build the container
-
-```bash
-docker build -t lulc-utility  .
-```
-
-To start the API-container run the following command:
-
-```bash
-docker run --env-file .env -p 8000:8000 lulc-utility:latest
-```
-
-
-> Go to [localhost:8000](http://localhost:8000) to see the dockerised API in action.
-
-[^1]: Note that `debug` mode does not work. We suggest using `read-only` for testing.
+[^1]: Note that for Neptune.ai, `debug` mode does not work. We suggest using `read-only` for testing.
 
 
 ---
