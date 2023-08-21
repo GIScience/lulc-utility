@@ -1,6 +1,6 @@
 defaults:
   - _self_
-  - data: baseline
+  - data: baseline_v2
   - model: baseline
   - serve: local
   - imagery: sentinel_hub

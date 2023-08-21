@@ -1,5 +1,5 @@
 host: localhost
 port: 8000
 api_version: v1
-model_version:
+model_version: CA-LULC-20
 predict_cache_size: 256

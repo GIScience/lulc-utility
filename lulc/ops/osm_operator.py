@@ -5,8 +5,11 @@ from multiprocessing.pool import ThreadPool
 from pathlib import Path
 from typing import Tuple, Dict
 
+import geopandas as gpd
 import numpy as np
+import pandas as pd
 import rasterio
+import shapely
 from geocube.api.core import make_geocube
 from ohsome import OhsomeClient
 from pyproj.aoi import AreaOfInterest
@@ -31,14 +34,14 @@ class OhsomeOps:
         bbox_id = self.__calculate_id(bbox)
         utm = self.__utm_from_coords(area_coords)
 
-        fetch_label_p = partial(self.__compute_label_mask, bbox, bbox_id, time, utm, height, width)
+        compute_label_mask_p = partial(self.__compute_label_mask, area_coords, bbox_id, time, utm, height, width)
         with ThreadPool(len(osm_lulc_mapping)) as pool:
-            for label, data in pool.map(fetch_label_p, osm_lulc_mapping.items()):
+            for label, data in pool.map(compute_label_mask_p, osm_lulc_mapping.items()):
                 result[label] = data.astype(np.bool_)
 
         return result
 
-    def __compute_label_mask(self, bbox: str, bbox_id: uuid.UUID, time: str, utm: str, height: int, width: int,
+    def __compute_label_mask(self, bbox: Tuple[float, float, float, float], bbox_id: uuid.UUID, time: str, utm: str, height: int, width: int,
                              osm_lulc_mapping: Tuple[str, str]) -> Tuple[str, np.ndarray]:
         label, osm_filter = osm_lulc_mapping
         data_folder = self.cache_dir / label
@@ -51,16 +54,18 @@ class OhsomeOps:
                 time=time,
                 filter=f'({osm_filter}) and geometry:polygon'
             ).as_dataframe()
+            extent_data = gpd.GeoDataFrame(index=['extent'], crs='epsg:4326', geometry=[shapely.geometry.box(*bbox, ccw=True)])
 
-            if not vector_data.empty:
-                raster = self.__computer_raster(vector_data, utm)
-                raster.rio.to_raster(raster_data)
+            vector_data['value'] = 1
+            extent_data['value'] = 0
+            vector_data = pd.concat([vector_data, extent_data], ignore_index=True)
+
+            raster = self.__computer_raster(vector_data, utm)
+            raster.rio.to_raster(raster_data)
 
         if raster_data.exists():
             with rasterio.open(raster_data) as dataset:
                 data = dataset.read(1, out_shape=(dataset.count, height, width), resampling=Resampling.bilinear)
-        else:
-            data = np.zeros((1, height, width))
 
         return label, data
 
@@ -70,7 +75,6 @@ class OhsomeOps:
         return uuid.UUID(hex=hex_string)
 
     def __computer_raster(self, vector_data, utm):
-        vector_data['value'] = 1
         sorted_desc_areas_idx = vector_data.copy().to_crs(utm).geometry.area.argsort()[::-1]
 
         return make_geocube(

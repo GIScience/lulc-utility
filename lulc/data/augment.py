@@ -1,6 +1,7 @@
+from typing import Dict
+
 import numpy as np
 from albumentations import Rotate, Compose, HorizontalFlip, VerticalFlip, ElasticTransform, CoarseDropout
-from omegaconf import DictConfig
 
 AUGMENTATIONS = {
     'random_rotate': Rotate,
@@ -24,7 +25,7 @@ class ComposeWrapper:
         }
 
 
-def build_random_tx(cfg: DictConfig):
+def build_random_tx(cfg: Dict):
     compose = Compose([AUGMENTATIONS[augmentation_name](**params)
                        for augmentation_name, params in cfg.items()])
     return ComposeWrapper(compose)

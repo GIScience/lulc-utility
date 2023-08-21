@@ -1,6 +1,4 @@
-import copy
 import logging
-from functools import partial
 from pathlib import Path
 from shutil import rmtree
 
@@ -8,22 +6,21 @@ import hydra
 import lightning.pytorch as pl
 import torch
 from coolname import generate_slug
-from lightning import seed_everything
 from hydra.core.hydra_config import HydraConfig
+from lightning import seed_everything
 from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
 from lightning.pytorch.loggers import NeptuneLogger
-from omegaconf import DictConfig
-from torch.utils.data import DataLoader, random_split
+from lightning.pytorch.tuner import Tuner
+from omegaconf import DictConfig, OmegaConf
 from torchvision import transforms
 
-from lulc.data.augment import build_random_tx
-from lulc.data.collate import random_crop_collate_fn, center_crop_collate_fn
 from lulc.data.dataset import AreaDataset
+from lulc.data.module import AreaDataModule
 from lulc.data.tx.array import Normalize, Stack, ReclassifyMerge, NanToNum
 from lulc.model.model import SegformerModule
 from lulc.model.ops.registry import NeptuneModelRegistry
-from lulc.ops.imagery_store_operator import resolve_imagery_store
 from lulc.monitoring.energy import EnergyContext
+from lulc.ops.imagery_store_operator import resolve_imagery_store
 
 log = logging.getLogger(__name__)
 
@@ -78,25 +75,14 @@ def train(cfg: DictConfig) -> None:
             log.info('Refreshing item intermediate cache (if exists)')
             rmtree(str(dataset.item_cache))
 
-        train_size = int(cfg.data.train_frac * len(dataset))
-        test_size = int(cfg.data.test_frac * len(dataset))
-        val_size = len(dataset) - (train_size + test_size)
-
-        log.info(f'Performing random dataset split (train: {train_size}, val: {val_size}, test: {test_size})')
-        train_dataset, val_dataset, test_dataset = random_split(dataset, [train_size, val_size, test_size])
-
-        log.info(f'Attaching random transformations to the training dataset: {list(cfg.model.augment.keys())}')
-        train_dataset.dataset = copy.deepcopy(train_dataset.dataset)
-        train_dataset.dataset.random_tx = build_random_tx(cfg.model.augment)
-
-        log.info('Configuring data loaders')
-        loader_p = partial(DataLoader, batch_size=cfg.model.batch_size,
-                           pin_memory=True,
-                           num_workers=cfg.model.workers,
-                           persistent_workers=True)
-        train_loader = loader_p(dataset=train_dataset, shuffle=True, collate_fn=random_crop_collate_fn(cfg.data.crop.height, cfg.data.crop.width))
-        val_loader = loader_p(dataset=val_dataset, collate_fn=center_crop_collate_fn(cfg.data.crop.height, cfg.data.crop.width))
-        test_loader = loader_p(dataset=test_dataset, collate_fn=center_crop_collate_fn(cfg.data.crop.height, cfg.data.crop.width))
+        datamodule = AreaDataModule(dataset=dataset,
+                                    batch_size=cfg.model.batch_size,
+                                    num_workers=cfg.model.workers,
+                                    crop_height=cfg.data.crop.height,
+                                    crop_width=cfg.data.crop.width,
+                                    train_frac=cfg.data.train_frac,
+                                    test_frac=cfg.data.test_frac,
+                                    augment=OmegaConf.to_container(cfg.model.augment, resolve=True))
 
         log.info(f'Creating a model ({cfg.model.variant})')
         params = dict(
@@ -110,6 +96,7 @@ def train(cfg: DictConfig) -> None:
             max_image_samples=cfg.model.max_image_samples
         )
         model = SegformerModule(**params)
+
         log.info(f'Training model for {cfg.model.max_epochs} epochs')
         energy_context.record('train')
 
@@ -123,14 +110,22 @@ def train(cfg: DictConfig) -> None:
                              gradient_clip_val=cfg.model.gradient_clip_val,
                              deterministic=cfg.environment.deterministic,
                              profiler=cfg.environment.profiler)
-        trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
+
+        if cfg.model.enable_tuning:
+            tuner = Tuner(trainer)
+            tuner.lr_find(model, datamodule=datamodule)
+            tuner.scale_batch_size(model, mode='binsearch',
+                                   datamodule=datamodule,
+                                   init_val=cfg.model.batch_size)
+
+        trainer.fit(model=model, datamodule=datamodule)
 
         log.info(f'Checking-out best model: {model_checkpoint.best_model_path}')
         model = SegformerModule.load_from_checkpoint(model_checkpoint.best_model_path, **params)
 
         log.info('Performing model evaluation')
         energy_context.record('test')
-        trainer.test(model=model, dataloaders=test_loader)
+        trainer.test(model=model, datamodule=datamodule)
 
         log.info(f'Model training completed: {run_name}')
         registry = NeptuneModelRegistry(model_key=cfg.neptune.model.key,

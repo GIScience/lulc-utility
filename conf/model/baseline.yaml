@@ -20,3 +20,6 @@ augment:
   coarse_dropout:
     p: 0.25
     max_holes: 15
+
+# Enable determining the optimal batch size and learning rate.
+enable_tuning: False

@@ -23,7 +23,7 @@ class AreaDataset(Dataset):
                  deterministic_tx: transforms.Compose,
                  random_tx: Optional[transforms.Compose] = None
                  ):
-        self.osm = OhsomeOps(cache_dir=cache_dir / 'osm')
+        self.osm = OhsomeOps(cache_dir=cache_dir / 'osm' / label_descriptor_ver)
         self.imagery_store = imagery_store
 
         self.area_descriptor = pd.read_csv(str(data_dir / 'area' / f'area_{area_descriptor_ver}.csv'))

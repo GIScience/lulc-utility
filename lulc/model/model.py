@@ -159,8 +159,9 @@ class SegformerModule(pl.LightningModule):
     def __log_metrics(self, phase):
         for metric_name, metric in self.metrics[phase].items():
             if isinstance(metric, PlotMetric):
-                image = File.as_image(metric.plot())
-                self.logger.experiment[f'{phase}/epoch/{metric_name}'].append(image)
+                fig = metric.plot()
+                self.logger.experiment[f'{phase}/epoch/{metric_name}'].append(File.as_image(fig))
+                plt.close(fig)
                 plt.cla()
             else:
                 self.log(f'{phase}/epoch/{metric_name}', metric.compute())

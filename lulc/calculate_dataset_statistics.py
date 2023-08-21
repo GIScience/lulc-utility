@@ -38,8 +38,7 @@ def calculate_dataset_statistics(cfg: DictConfig) -> None:
         deterministic_tx=transforms.Compose([
             NanToNum(layers=['s1.tif', 's2.tif']),
             Stack(),
-            ReclassifyMerge(),
-            ToTensor()
+            ReclassifyMerge()
         ])
     )
 
