@@ -8,6 +8,13 @@ from lulc.data.grid import GridCalculator
 
 @hydra.main(version_base=None, config_path='../conf', config_name='area_descriptor')
 def compute_area_descriptor(cfg: DictConfig) -> None:
+    """
+    Compute the area data descriptor by splitting the chosen NUTS regions into a grid.
+
+    :param cfg: underlying Hydra configuration
+    :return:
+    """
+
     calculator = GridCalculator(nuts_source=cfg.area.nuts_source,
                                 nuts_id_col=cfg.area.nuts_id_col,
                                 split_mode=cfg.area.split_mode,

@@ -5,18 +5,27 @@ defaults:
   - serve: local
   - imagery: sentinel_hub
 
+# Directory where all intermediate data is being store.
 cache:
   dir: ./cache
 
 environment:
+  # Set to run the training proces in a deterministic fashion:
+  # - https://pytorch.org/docs/stable/generated/torch.use_deterministic_algorithms.html
+  # - https://lightning.ai/docs/pytorch/stable/common/trainer.html#reproducibility
   deterministic: False
+
+  # Set to run the training process with a profiler attached: https://pytorch-lightning.readthedocs.io/en/1.5.10/advanced/profiler.html
   profiler:
+
+  # Set to log estimated energy consumption of the training process: https://pyjoules.readthedocs.io/en/latest/
   energy_tracker: True
 
 hydra:
   run:
     dir: ./outputs/${hydra.job.name}/${now:%Y-%m-%d_%H-%M-%S}
 
+# Neptune ML artifactory configuration: https://docs.neptune.ai/
 neptune:
   project: ${oc.env:NEPTUNE_PROJECT_ID}
   api_token: ${oc.env:NEPTUNE_PROJECT_API_TOKEN}

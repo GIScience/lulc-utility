@@ -1,5 +1,16 @@
+# Model serving API host
 host: localhost
+
+# Model serving API host
 port: 8000
-api_version: v1
+
+# Served model version.
+# If none it will be automatically resolved to latest, production model
 model_version: CA-LULC-20
+
+# Number of predictions stored in an ephemeral cache.
+# Used as an idempotency mechanism.
 predict_cache_size: 256
+
+# Version of the app REST API
+api_version: v1

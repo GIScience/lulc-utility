@@ -34,6 +34,14 @@ config_dir = os.getenv('LULC_UTILITY_APP_CONFIG_DIR', str(Path('conf').absolute(
 
 @asynccontextmanager
 async def configure_dependencies(app: FastAPI):
+    """
+    Initialize all required dependencies and attach them to the FastAPI state.
+    Each underlying service utilizes configuration stored in `./conf/`.
+
+    :param app: web application instance
+    :return: context manager generator
+    """
+
     hydra.initialize_config_dir(config_dir=config_dir, version_base=None)
     cfg = compose(config_name='config')
 
@@ -61,6 +69,21 @@ async def configure_dependencies(app: FastAPI):
 @lru_cache(maxsize=32)
 def __predict(imagery_store: ImageryStore, inference_session: InferenceSession, tx: Callable,
               area_coords: Tuple[float, float, float, float], start_date: str, end_date: str):
+    """
+    Run the model inference pipeline:
+    - call the external remote sensing imagery store to acquire preprocessed data,
+    - apply data transformations to adjust the preprocessed data to model requirements,
+    - run the inference session.
+
+    :param imagery_store: operator used to communicat with the remote sensing imagery store
+    :param inference_session: ONNX inference session
+    :param tx: data transformation and adjustment pipeline
+    :param area_coords: coordinates of the prediction target area
+    :param start_date: Lower bound (inclusive) of remote sensing imagery acquisition date (UTC)
+    :param end_date: Upper bound (inclusive) of remote sensing imagery acquisition date (UTC)
+    :return: 2D numpy array with most probable classes
+    """
+
     try:
         imagery, imagery_size = imagery_store.imagery(area_coords, start_date, end_date)
         imagery = tx({'imagery': imagery})
@@ -74,24 +97,27 @@ def __predict(imagery_store: ImageryStore, inference_session: InferenceSession, 
 
 
 class Body(BaseModel):
-    area_coords: Tuple[float, float, float, float] = Field(examples=[[12.304687500000002,
+    area_coords: Tuple[float, float, float, float] = Field(description='Bounding box coordinates in WGS 84 (left, bottom, right, top)',
+                                                           examples=[[12.304687500000002,
                                                                       48.2246726495652,
                                                                       12.480468750000002,
                                                                       48.3416461723746]])
-    start_date: str = Field(examples=['2023-05-01'])
-    end_date: str = Field(examples=['2023-06-01'])
+    start_date: str = Field(description='Lower bound (inclusive) of remote sensing imagery acquisition date (UTC)',
+                            examples=['2023-05-01'])
+    end_date: str = Field(description='Upper bound (inclusive) of remote sensing imagery acquisition date (UTC)',
+                          examples=['2023-06-01'])
 
 
 health = APIRouter(prefix='/health')
 segment = APIRouter(prefix='/segment')
 
 
-@health.get('', status_code=200)
+@health.get('', status_code=200, description='Verify whether the application API is operational')
 def is_ok():
     return {'status': 'ok'}
 
 
-@segment.post('/preview')
+@segment.post('/preview', description='Run the semantic segmentation algorithm and return a preview of the result (1/4 target low-resolution, medium-compression image)')
 def segment_preview(body: Body, request: Request):
     labels, _ = __predict(request.app.state.imagery_store,
                           request.app.state.inference_session,
@@ -109,7 +135,7 @@ def segment_preview(body: Body, request: Request):
     return Response(buf.getvalue(), media_type='image/png')
 
 
-@segment.post('/')
+@segment.post('/', description='Run the semantic segmentation algorithm and return a georeferenced raster (GeoTIFF)')
 def segment_compute(body: Body, request: Request):
     labels, (h, w) = __predict(request.app.state.imagery_store,
                                request.app.state.inference_session,
@@ -143,7 +169,7 @@ def segment_compute(body: Body, request: Request):
                         background=BackgroundTask(unlink))
 
 
-@segment.get('/describe')
+@segment.get('/describe', description='Return semantic segmentation labels dictionary')
 def segment_describe(request: Request):
     return request.app.state.labels
 

@@ -1,5 +1,14 @@
+# Name of the operator. Used to resolve an appropriate implementation.
 operator: sentinel_hub
+
+# SentinelHub API identifier: https://docs.sentinel-hub.com/api/latest/user-guides/beginners-guide/
 api_id: ${oc.env:SENTINELHUB_API_ID}
+
+# SentinelHub API secret: https://docs.sentinel-hub.com/api/latest/user-guides/beginners-guide/
 api_secret: ${oc.env:SENTINELHUB_API_SECRET}
+
+# Directory which contains SentinelHub image acquisition and preprocessing descriptor.
 evalscript_dir: data/imagery
+
+# Image acquisition and preprocessing descriptor name.
 evalscript_name: imagery_v1

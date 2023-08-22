@@ -21,7 +21,7 @@ COPY app app
 COPY conf conf
 COPY data data
 COPY lulc lulc
-COPY example/data cache/sentinelhub/imagery_v1
+COPY data/example cache/sentinelhub/imagery_v1
 
 ENV TRANSFORMERS_CACHE='/tmp'
 ENV PYTHONPATH "${PYTHONPATH}:/ca-lulc-utility/lulc"
