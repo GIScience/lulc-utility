@@ -59,6 +59,8 @@ class SegformerModule(pl.LightningModule):
                  class_weights: List[float],
                  color_codes: List[List[int]],
                  max_image_samples=5,
+                 temperature=1.0,
+                 label_smoothing=0.0,
                  *args: Any,
                  **kwargs: Any):
         super().__init__(*args, **kwargs)
@@ -79,6 +81,8 @@ class SegformerModule(pl.LightningModule):
         self.class_weights = torch.tensor(class_weights).to(device)
         self.color_codes = torch.tensor(color_codes).to(device)
         self.max_image_samples = max_image_samples
+        self.temperature = temperature
+        self.label_smoothing = label_smoothing
 
         self.model = SegformerForSemanticSegmentation(self.configuration)
         self.lr = lr
@@ -116,12 +120,13 @@ class SegformerModule(pl.LightningModule):
     def step(self, batch, phase):
         x, y = batch['x'], batch['y']
 
-        logits = self.model(x).logits
+        logits = self.model(x).logits / self.temperature
         upsampled_logits = F.interpolate(logits, size=y.shape[-2:], mode='bilinear', align_corners=False)
 
         loss = F.cross_entropy(upsampled_logits, y,
                                ignore_index=self.configuration.semantic_loss_ignore_index,
-                               weight=self.class_weights)
+                               weight=self.class_weights,
+                               label_smoothing=self.label_smoothing)
 
         y_pred = upsampled_logits.argmax(dim=1)
 

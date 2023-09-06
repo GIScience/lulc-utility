@@ -1,29 +1,34 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import pandas as pd
+import yaml
 from PIL import ImageColor
-
-BACKGROUND_COLOR = [0, 0, 0]
-BACKGROUND_LABEL = 'unknown'
 
 
 @dataclass
-class LabelsDescriptor:
-    color_codes: List[List[int]]
-    names: List[str]
+class LabelDescriptor:
+    name: str
+    filter: Optional[str]
+    color_code: List[int]
+    description: Optional[str]
 
 
-def resolve_labels(data_dir: Path, label_descriptor_version: str) -> LabelsDescriptor:
+BACKGROUND_DESCRIPTOR = LabelDescriptor(
+    'unknown',
+    None,
+    [0, 0, 0],
+    'areas which class cannot be predicted with a required certainty score'
+)
+
+
+def resolve_labels(data_dir: Path, label_descriptor_version: str) -> List[LabelDescriptor]:
     def aux(color: str):
         r, g, b = ImageColor.getcolor(color, 'RGB')
-        return pd.Series([r, g, b])
+        return [r, g, b]
 
-    labels_descriptor = pd.read_csv(str(data_dir / 'label' / f'label_{label_descriptor_version}.csv'),
-                                    index_col='label')['color_code']
-    label_color_codes = labels_descriptor.apply(aux).values
-    return LabelsDescriptor(
-        [BACKGROUND_COLOR] + label_color_codes.tolist(),
-        [BACKGROUND_LABEL] + labels_descriptor.index.values.tolist()
-    )
+    with open(str(data_dir / 'label' / f'label_{label_descriptor_version}.yaml'), 'r') as file:
+        labels_descriptor = pd.DataFrame(yaml.safe_load(file))
+        labels_descriptor['color_code'] = labels_descriptor['color_code'].apply(aux).values
+        return [BACKGROUND_DESCRIPTOR] + [LabelDescriptor(**row) for _, row in labels_descriptor.iterrows()]

@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Optional, List, Dict
+from typing import Optional
 
 import pandas as pd
 import torch
@@ -28,14 +28,14 @@ class AreaDataset(Dataset):
 
         self.area_descriptor = pd.read_csv(str(data_dir / 'area' / f'area_{area_descriptor_ver}.csv'))
 
-        label_descriptor = pd.read_csv(str(data_dir / 'label' / f'label_{label_descriptor_ver}.csv'),
-                                       index_col='label')
-        self.labels, self.osm_lulc_mapping = self.__interpret_label_descriptor(label_descriptor)
+        label_descriptors = resolve_labels(data_dir, label_descriptor_ver)
+        self.labels = [d.name for d in label_descriptors]
+        self.osm_lulc_mapping = dict([(d.name, d.filter) for d in label_descriptors if d.filter is not None])
+        self.color_codes = [d.color_code for d in label_descriptors]
 
         self.item_cache = cache_dir / 'items' / area_descriptor_ver / label_descriptor_ver
         self.deterministic_tx = deterministic_tx
         self.random_tx = random_tx
-        self.color_codes = resolve_labels(data_dir, label_descriptor_ver).color_codes
 
     def __len__(self):
         return len(self.area_descriptor)
@@ -67,8 +67,3 @@ class AreaDataset(Dataset):
 
         item = item if self.random_tx is None else self.random_tx(item)
         return ToTensor()(item)
-
-    @staticmethod
-    def __interpret_label_descriptor(descriptor: pd.DataFrame) -> (List[str], Dict):
-        osm_lulc = dict((str(k), v['filter']) for k, v in descriptor.iterrows())
-        return ['unidentified'] + list(osm_lulc.keys()), osm_lulc

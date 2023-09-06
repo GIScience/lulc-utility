@@ -9,6 +9,7 @@ from typing import Tuple, Callable
 
 import hydra
 import numpy as np
+import numpy.ma as ma
 import rasterio
 import uvicorn
 from PIL import Image
@@ -17,6 +18,7 @@ from hydra import compose
 from onnxruntime import InferenceSession
 from pydantic import BaseModel, Field
 from rasterio.crs import CRS
+from scipy.special import softmax
 from starlette.background import BackgroundTask
 from starlette.requests import Request
 from starlette.responses import Response, FileResponse
@@ -63,11 +65,12 @@ async def configure_dependencies(app: FastAPI):
         return AdjustShape(subset='imagery')(x)
 
     app.state.tx = tx
+
     yield
 
 
 @lru_cache(maxsize=32)
-def __predict(imagery_store: ImageryStore, inference_session: InferenceSession, tx: Callable,
+def __predict(imagery_store: ImageryStore, inference_session: InferenceSession, tx: Callable, threshold: float,
               area_coords: Tuple[float, float, float, float], start_date: str, end_date: str):
     """
     Run the model inference pipeline:
@@ -78,6 +81,7 @@ def __predict(imagery_store: ImageryStore, inference_session: InferenceSession, 
     :param imagery_store: operator used to communicat with the remote sensing imagery store
     :param inference_session: ONNX inference session
     :param tx: data transformation and adjustment pipeline
+    :param threshold: Class prediction threshold
     :param area_coords: coordinates of the prediction target area
     :param start_date: Lower bound (inclusive) of remote sensing imagery acquisition date (UTC)
     :param end_date: Upper bound (inclusive) of remote sensing imagery acquisition date (UTC)
@@ -88,8 +92,10 @@ def __predict(imagery_store: ImageryStore, inference_session: InferenceSession, 
         imagery, imagery_size = imagery_store.imagery(area_coords, start_date, end_date)
         imagery = tx({'imagery': imagery})
         logits = inference_session.run(output_names=None, input_feed=imagery)[0][0]
+        mask = softmax(logits, axis=0) < threshold
+        ma_logits = ma.array(logits, mask=mask)
 
-        return np.argmax(logits, axis=0, keepdims=False).astype(np.uint8), imagery_size
+        return ma.argmax(ma_logits, axis=0, keepdims=False, fill_value=0).astype(np.uint8), imagery_size
     except OperatorValidationException as e:
         raise HTTPException(status_code=400, detail=str(e))
     except OperatorInteractionException as e:
@@ -106,6 +112,11 @@ class Body(BaseModel):
                             examples=['2023-05-01'])
     end_date: str = Field(description='Upper bound (inclusive) of remote sensing imagery acquisition date (UTC)',
                           examples=['2023-06-01'])
+    threshold: float = Field(description='Not exceeding this value by the class prediction score results in the recognition of the result as "unknown"',
+                             default=0,
+                             examples=[0.75],
+                             ge=0.0,
+                             le=1.0)
 
 
 health = APIRouter(prefix='/health')
@@ -122,10 +133,11 @@ def segment_preview(body: Body, request: Request):
     labels, _ = __predict(request.app.state.imagery_store,
                           request.app.state.inference_session,
                           request.app.state.tx,
+                          body.threshold,
                           body.area_coords,
                           body.start_date,
                           body.end_date)
-    labels = np.array(request.app.state.labels.color_codes, dtype=np.uint8)[labels]
+    labels = np.array([d.color_code for d in request.app.state.labels], dtype=np.uint8)[labels]
     labels = Image.fromarray(labels)
 
     buf = io.BytesIO()
@@ -140,6 +152,7 @@ def segment_compute(body: Body, request: Request):
     labels, (h, w) = __predict(request.app.state.imagery_store,
                                request.app.state.inference_session,
                                request.app.state.tx,
+                               body.threshold,
                                body.area_coords,
                                body.start_date,
                                body.end_date)
@@ -161,7 +174,7 @@ def segment_compute(body: Body, request: Request):
                        nodata=None,
                        transform=transform) as dst:
         dst.write(labels, 1)
-        dst.write_colormap(1, dict(enumerate(request.app.state.labels.color_codes)))
+        dst.write_colormap(1, dict(enumerate([d.color_code for d in request.app.state.labels])))
 
     return FileResponse(file_path,
                         media_type='image/geotiff',

@@ -8,7 +8,7 @@ full workflow of
 2. registering and tracking the model in an online store and
 3. serving the models predictions via a REST-API.
 
-OpenStreetMap LULC polygons are used as training labels via [this OSM2LULC mapping](data/label/label_v1.csv). The model
+OpenStreetMap LULC polygons are used as training labels via [this OSM2LULC mapping](data/label/label_v2.yaml). The model
 is trained locally and stored at [neptune.ai](https://app.neptune.ai/o/HeiGIT/org/climate-action/models). The feature
 space is constructed from [Sentinel 1, 2](https://sentinel.esa.int/web/sentinel/missions) and a DEM. The utility can
 then spawn a [FastAPI](https://fastapi.tiangolo.com/) endpoint which enables operators to request LULC classifications

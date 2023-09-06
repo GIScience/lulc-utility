@@ -9,7 +9,7 @@ from onnxruntime import InferenceSession
 from tifffile import imread
 
 from app.api import app
-from lulc.data.label import LabelsDescriptor
+from lulc.data.label import LabelDescriptor
 from lulc.data.tx.array import Normalize, Stack, NanToNum, AdjustShape
 from lulc.ops.imagery_store_operator import ImageryStore
 
@@ -41,10 +41,13 @@ TEST_JSON = {
 def mocked_client():
     client = TestClient(app)
     app.state.imagery_store = TestImageryStore()
-    app.state.labels = LabelsDescriptor(
-        [[0, 0, 0], [255, 0, 0], [77, 200, 0], [130, 200, 250], [255, 255, 80]],
-        ['unknown', 'built-up', 'forest', 'water', 'agriculture']
-    )
+    app.state.labels = [
+        LabelDescriptor('unknown', 'key=value', [0, 0, 0], 'description'),
+        LabelDescriptor('built-up', 'key=value', [255, 0, 0], 'description'),
+        LabelDescriptor('forest', 'key=value', [77, 200, 0], 'description'),
+        LabelDescriptor('water', 'key=value', [130, 200, 250], 'description'),
+        LabelDescriptor('agriculture', 'key=value', [255, 255, 80], 'description')
+    ]
     app.state.inference_session = InferenceSession(str(Path(__file__).parent / 'test.onnx'))
 
     def test_app_transformation_procedure(x):
@@ -79,13 +82,8 @@ def test_segment_image(mocked_client):
 
 def test_segment_describe(mocked_client):
     response = mocked_client.get('/segment/describe')
-    assert response.json() == {'color_codes': [[0, 0, 0],
-                                               [255, 0, 0],
-                                               [77, 200, 0],
-                                               [130, 200, 250],
-                                               [255, 255, 80]],
-                               'names': ['unknown',
-                                         'built-up',
-                                         'forest',
-                                         'water',
-                                         'agriculture']}
+    assert response.json() == [{'name': 'unknown', 'filter': 'key=value', 'color_code': [0, 0, 0], 'description': 'description'},
+                               {'name': 'built-up', 'filter': 'key=value', 'color_code': [255, 0, 0], 'description': 'description'},
+                               {'name': 'forest', 'filter': 'key=value', 'color_code': [77, 200, 0], 'description': 'description'},
+                               {'name': 'water', 'filter': 'key=value', 'color_code': [130, 200, 250], 'description': 'description'},
+                               {'name': 'agriculture', 'filter': 'key=value', 'color_code': [255, 255, 80], 'description': 'description'}]

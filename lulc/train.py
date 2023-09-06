@@ -93,7 +93,9 @@ def train(cfg: DictConfig) -> None:
             device=device,
             class_weights=cfg.data.class_weights,
             color_codes=dataset.color_codes,
-            max_image_samples=cfg.model.max_image_samples
+            max_image_samples=cfg.model.max_image_samples,
+            temperature=cfg.model.temperature,
+            label_smoothing=cfg.model.label_smoothing
         )
         model = SegformerModule(**params)
 

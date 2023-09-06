@@ -1,5 +1,0 @@
-label,filter,color_code
-built-up,landuse=civic_admin or landuse=commercial or landuse=depot or landuse=education or landuse=farmyard or landuse=garages or landuse=industrial or landuse=residential or landuse=retail,#ff0000
-forest,landuse=forest or natural=wood,#4dc800
-water,landuse=reservoir or natural=water or waterway=dock or waterway=riverbank,#82c8fa
-agriculture,landuse=farmland or landuse=meadow or landuse=vineyard,#ffff50

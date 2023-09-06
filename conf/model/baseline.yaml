@@ -24,6 +24,13 @@ workers: 1
 # Number of images used to create segmentation progress visualisations.
 max_image_samples: 3
 
+# Used during model logits scaling: https://arxiv.org/pdf/1706.04599.pdf
+# > 1.0 yields softer labels distribution
+temperature: 1.0
+
+# Used to apply label smoothing during cross entropy loss calculation
+label_smoothing: 0.0
+
 # Frequency of sending logs to the underlying experiment tracking software.
 log_every_n_steps: 10
 
