@@ -4,7 +4,7 @@ COPY environment_deploy.yaml environment.yaml
 
 RUN mamba env create -f environment.yaml && \
     mamba install -c conda-forge conda-pack && \
-    conda-pack -f --ignore-missing-files -n ca-lulc-utility -o /tmp/env.tar && \
+    conda-pack -f --ignore-missing-files -n ca-lulc-utility-deploy -o /tmp/env.tar && \
     mkdir /venv && \
     cd /venv && \
     tar xf /tmp/env.tar && \
@@ -28,4 +28,5 @@ ENV PYTHONPATH "${PYTHONPATH}:/ca-lulc-utility/lulc"
 
 SHELL ["/bin/bash", "-c"]
 ENTRYPOINT source /ca-lulc-utility/venv/bin/activate && \
-           uvicorn app.api:app --host 0.0.0.0 --port 8000 --root-path '/api/lulc/v1' --log-config=conf/logging/app/logging.yaml
+           uvicorn app.api:app --host 0.0.0.0 --port 8000 --root-path ${ROOT_PATH:-'/'} --log-config=conf/logging/app/logging.yaml
+EXPOSE 8000

@@ -103,6 +103,28 @@ python app/api.py
 
 > Go to [localhost:8000](http://localhost:8000) to see the API in action.
 
+### Docker
+
+The tool is also [Dockerised](Dockerfile). To start it, run the following commands
+
+```shell
+docker build . --tag heigit/ca-lulc-utility:devel
+docker run --publish 8000:8000  --env-file .env heigit/ca-lulc-utility:devel
+```
+
+then head to the link above. Make sure to populate the .env file using the [.env_template](.env_template).
+
+To run behind a proxy, you can configure the root path using the environment variable `ROOT_PATH`.
+
+#### Deploy
+
+To push a new version to [Docker Hub](https://hub.docker.com/orgs/heigit) run
+
+```shell
+docker build . --tag heigit/ca-lulc-utility:devel
+docker image push heigit/ca-lulc-utility:devel
+```
+
 [^1]: Note that for Neptune.ai, `debug` mode does not work. We suggest using `read-only` for testing.
 
 
