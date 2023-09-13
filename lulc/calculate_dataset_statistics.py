@@ -7,7 +7,7 @@ from omegaconf import DictConfig
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
-from data.collate import center_crop_collate_fn
+from lulc.data.collate import center_crop_collate_fn
 from lulc.data.dataset import AreaDataset
 from lulc.data.stats import dataset_iter_statistics
 from lulc.data.tx.array import Stack, ReclassifyMerge, NanToNum

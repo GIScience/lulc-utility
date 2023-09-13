@@ -6,7 +6,7 @@ port: 8000
 
 # Served model version.
 # If none it will be automatically resolved to latest, production model
-model_version: CA-LULC-20
+model_version: CA-LULC-21
 
 # Number of predictions stored in an ephemeral cache.
 # Used as an idempotency mechanism.
