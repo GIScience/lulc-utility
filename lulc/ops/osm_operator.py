@@ -11,6 +11,7 @@ import pandas as pd
 import rasterio
 import shapely
 from geocube.api.core import make_geocube
+from hydra.core.hydra_config import HydraConfig
 from ohsome import OhsomeClient
 from pyproj.aoi import AreaOfInterest
 from pyproj.database import query_utm_crs_info
@@ -22,7 +23,7 @@ class OhsomeOps:
     def __init__(self, cache_dir: Path, resolution=(-.0001, .0001)):
         self.cache_dir: Path = cache_dir
         self.resolution = resolution
-        self.ohsome = OhsomeClient(user_agent='ClimateAction/LULC', log=False)
+        self.ohsome = OhsomeClient(user_agent='ClimateAction/LULC', log_dir=HydraConfig.get().runtime.output_dir)
 
     def labels(self, area_coords: Tuple[float, float, float, float],
                time: str,
@@ -41,7 +42,13 @@ class OhsomeOps:
 
         return result
 
-    def __compute_label_mask(self, bbox: Tuple[float, float, float, float], bbox_id: uuid.UUID, time: str, utm: str, height: int, width: int,
+    def __compute_label_mask(self,
+                             bbox: Tuple[float, float, float, float],
+                             bbox_id: uuid.UUID,
+                             time: str,
+                             utm: str,
+                             height: int,
+                             width: int,
                              osm_lulc_mapping: Tuple[str, str]) -> Tuple[str, np.ndarray]:
         label, osm_filter = osm_lulc_mapping
         data_folder = self.cache_dir / label
@@ -54,7 +61,9 @@ class OhsomeOps:
                 time=time,
                 filter=f'({osm_filter}) and geometry:polygon'
             ).as_dataframe()
-            extent_data = gpd.GeoDataFrame(index=['extent'], crs='epsg:4326', geometry=[shapely.geometry.box(*bbox, ccw=True)])
+            extent_data = gpd.GeoDataFrame(index=['extent'],
+                                           crs='epsg:4326',
+                                           geometry=[shapely.geometry.box(*bbox, ccw=True)])
 
             vector_data['value'] = 1
             extent_data['value'] = 0

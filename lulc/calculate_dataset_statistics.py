@@ -47,7 +47,7 @@ def calculate_dataset_statistics(cfg: DictConfig) -> None:
 
     loader = DataLoader(dataset,
                         batch_size=cfg.model.batch_size,
-                        num_workers=0,
+                        num_workers=cfg.model.workers,
                         persistent_workers=False,
                         collate_fn=center_crop_collate_fn(cfg.data.crop.height, cfg.data.crop.width))
 

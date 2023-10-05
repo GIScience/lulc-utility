@@ -62,7 +62,7 @@ class SentinelHubOperator(ImageryStore):
                     time_interval=(start_date, end_date)
                 ),
                 SentinelHubRequest.input_data(
-                    data_collection=DataCollection.SENTINEL2_L1C,
+                    data_collection=DataCollection.SENTINEL2_L2A,
                     identifier='s2',
                     time_interval=(start_date, end_date),
                     mosaicking_order=MosaickingOrder.LEAST_CC,
