@@ -42,3 +42,18 @@ def test_step():
 
     for metric in model.metrics['test'].values():
         assert torch.all(metric.compute() != 0) and not torch.all(torch.isnan(metric.compute()))
+
+
+@pytest.mark.parametrize(
+    'input_shape, expected_shape',
+    [
+        ((2, 3, 256, 256), (2, 256, 256, 3)),
+        ((2, 7, 256, 256), (2, 256, 256, 3)),
+        ((2, 5, 256, 256), (2, 256, 256, 3)),
+        ((2, 1, 256, 256), (2, 256, 256, 3)),
+    ]
+)
+def test_image_grid(input_shape, expected_shape):
+    x = torch.rand(input_shape)
+    result = SegformerModule.image_grid(x)
+    assert result.shape == torch.Size(expected_shape)

@@ -1,4 +1,5 @@
 import logging
+import math
 from typing import List, Any
 
 import lightning.pytorch as pl
@@ -8,6 +9,7 @@ import torch.nn.functional as F
 from neptune.types import File
 from torch.optim import Adam
 from torchmetrics import MeanMetric, JaccardIndex, Accuracy, F1Score, Precision, Recall
+from torchvision.transforms import Resize
 from transformers import SegformerForSemanticSegmentation, \
     SegformerConfig
 
@@ -132,7 +134,7 @@ class SegformerModule(pl.LightningModule):
 
         self.metrics[phase]['loss'].update(loss.cpu())
         self.log(f'{phase}/batch/loss', loss, prog_bar=True)
-        self.register_sample_image(y, y_pred, phase)
+        self.register_sample_image(x, y, y_pred, phase)
 
         for metric_name, metric in self.metrics[phase].items():
             if metric_name != 'loss':
@@ -140,13 +142,35 @@ class SegformerModule(pl.LightningModule):
 
         return loss
 
-    def register_sample_image(self, y: torch.Tensor, y_pred: torch.Tensor, phase: str):
+    def register_sample_image(self, x: torch.Tensor, y: torch.Tensor, y_pred: torch.Tensor, phase: str):
+        def compute_image():
+            image = torch.cat([y, y_pred], dim=2)
+            image = self.color_codes[image] / 255
+            x_grid = self.image_grid(x)
+            return torch.cat([x_grid, image], dim=2)
+
         if phase in self.images and self.images[phase].shape[0] < self.max_image_samples:
-            image = torch.cat([y, y_pred], dim=2)
-            self.images[phase] = torch.cat([self.images[phase], self.color_codes[image]])[:self.max_image_samples]
+            self.images[phase] = torch.cat([self.images[phase], compute_image()])[:self.max_image_samples]
         elif phase not in self.images:
-            image = torch.cat([y, y_pred], dim=2)
-            self.images[phase] = self.color_codes[image]
+            self.images[phase] = compute_image()
+
+    @staticmethod
+    def image_grid(x: torch.Tensor, n_cols=3):
+        norm = plt.Normalize(-0.75, 0.75)
+        cmap = plt.get_cmap('gray')
+
+        b, ch, h, w = x.size()
+        n_rows = math.ceil(ch / n_cols)
+        if n_rows * n_cols != ch:
+            empty_channels = n_rows * n_cols - ch
+            x = torch.cat([x, torch.zeros((b, empty_channels, h, w))], dim=1)
+            b, ch, h, w = x.size()
+
+        x_grid = x.reshape(b, n_rows, n_cols, h, w).swapaxes(2, 3).reshape(b, h * n_rows, w * n_cols)
+        x_grid = torch.tensor(cmap(norm(x_grid.cpu()))[..., :3], device=x.device)
+        x_grid = x_grid.permute(0, 3, 1, 2)
+        x_grid = Resize((h, w), antialias=True)(x_grid)
+        return x_grid.permute(0, 2, 3, 1)
 
     def on_train_epoch_end(self):
         return self.__on_epoch_end('train')
@@ -175,7 +199,7 @@ class SegformerModule(pl.LightningModule):
     def __publish_images(self, phase):
         images = self.images[phase].cpu().numpy()
         for idx in range(min(images.shape[0], self.max_image_samples)):
-            image = File.as_image(images[idx] / 255)
+            image = File.as_image(images[idx])
             self.logger.experiment[f'{phase}/sample/image_{idx}'].append(image)
 
         del self.images[phase]
