@@ -1,4 +1,5 @@
 import io
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Tuple, Dict
 
@@ -8,7 +9,7 @@ from fastapi.testclient import TestClient
 from onnxruntime import InferenceSession
 from tifffile import imread
 
-from app.api import app
+from app.api import app, DATE_FORMAT
 from lulc.data.label import LabelDescriptor
 from lulc.data.tx.array import Normalize, Stack, NanToNum, AdjustShape
 from lulc.ops.imagery_store_operator import ImageryStore
@@ -16,8 +17,15 @@ from lulc.ops.imagery_store_operator import ImageryStore
 
 class TestImageryStore(ImageryStore):
 
+    def __init__(self):
+        self.last_start_date = None
+        self.last_end_date = None
+
     def imagery(self, area_coords: Tuple, start_date: str, end_date: str,
                 resolution: int = 10) -> tuple[Dict[str, np.ndarray], tuple[int, int]]:
+        self.last_start_date = start_date
+        self.last_end_date = end_date
+
         return {
             's1.tif': np.random.uniform(0, 2, (512, 768, 2)).astype(np.float32),
             's2.tif': np.random.randint(0, 255, (512, 768, 6)).astype(np.float32),
@@ -25,7 +33,7 @@ class TestImageryStore(ImageryStore):
         }, (512, 768)
 
 
-TEST_JSON = {
+TEST_JSON_start_end = {
     'area_coords': [
         7.3828125,
         47.5172006978394,
@@ -35,6 +43,28 @@ TEST_JSON = {
     'start_date': '2023-05-01',
     'end_date': '2023-06-01'
 }
+
+TEST_JSON_end_only = {
+    'area_coords': [
+        7.3828125,
+        47.5172006978394,
+        7.55859375,
+        47.63578359086485
+    ],
+    'end_date': '2023-06-01'
+}
+
+TEST_JSON_no_time = {
+    'area_coords': [
+        7.3828125,
+        47.5172006978394,
+        7.55859375,
+        47.63578359086485
+    ]
+}
+
+TODAY = str(datetime.now().strftime(DATE_FORMAT))
+WEEK_BEFORE = str((datetime.now() - timedelta(days=7)).strftime(DATE_FORMAT))
 
 
 @pytest.fixture
@@ -66,14 +96,22 @@ def test_health(mocked_client):
     assert response.json() == {'status': 'ok'}
 
 
-def test_segment_preview(mocked_client):
-    response = mocked_client.post('/segment/preview', json=TEST_JSON)
+@pytest.mark.parametrize(
+    'request_body, expected_start_date, expected_end_date',
+    [(TEST_JSON_start_end, '2023-05-01', '2023-06-01'),
+     (TEST_JSON_end_only, '2023-05-25', '2023-06-01'),
+     (TEST_JSON_no_time, WEEK_BEFORE, TODAY)],
+)
+def test_segment_preview(mocked_client, request_body, expected_start_date, expected_end_date):
+    response = mocked_client.post('/segment/preview', json=request_body)
     assert response.status_code == 200
     assert response.headers['content-type'] == 'image/png'
+    assert mocked_client.app.state.imagery_store.last_start_date == expected_start_date
+    assert mocked_client.app.state.imagery_store.last_end_date == expected_end_date
 
 
 def test_segment_image(mocked_client):
-    response = mocked_client.post('/segment', json=TEST_JSON)
+    response = mocked_client.post('/segment', json=TEST_JSON_start_end)
     response_data = imread(io.BytesIO(response.content))
     assert response.status_code == 200
     assert response.headers['content-type'] == 'image/geotiff'

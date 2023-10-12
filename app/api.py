@@ -3,9 +3,10 @@ import logging
 import os
 import uuid
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta
 from functools import lru_cache
 from pathlib import Path
-from typing import Tuple, Callable
+from typing import Tuple, Callable, Optional, Any
 
 import hydra
 import numpy as np
@@ -32,6 +33,8 @@ from lulc.ops.imagery_store_operator import ImageryStore, resolve_imagery_store
 log = logging.getLogger(__name__)
 
 config_dir = os.getenv('LULC_UTILITY_APP_CONFIG_DIR', str(Path('conf').absolute()))
+
+DATE_FORMAT = '%Y-%m-%d'
 
 
 @asynccontextmanager
@@ -108,15 +111,29 @@ class Body(BaseModel):
                                                                       48.2246726495652,
                                                                       12.480468750000002,
                                                                       48.3416461723746]])
-    start_date: str = Field(description='Lower bound (inclusive) of remote sensing imagery acquisition date (UTC)',
-                            examples=['2023-05-01'])
-    end_date: str = Field(description='Upper bound (inclusive) of remote sensing imagery acquisition date (UTC)',
-                          examples=['2023-06-01'])
+    start_date: Optional[str] = Field(description='Lower bound (inclusive) of remote sensing imagery acquisition date (UTC). '
+                                                  'The model uses an image stack of multiple acquisition times for predictions. '
+                                                  'Larger time intervals will improve the prediction accuracy'
+                                                  'If not set it will be automatically set to the week before `end_date`',
+                                      examples=['2023-05-01'],
+                                      default=None)
+    end_date: str = Field(description="Upper bound (inclusive) of remote sensing imagery acquisition date (UTC)."
+                                      "Defaults to today's date",
+                          examples=['2023-06-01'],
+                          default=str(datetime.now().strftime('%Y-%m-%d')))
     threshold: float = Field(description='Not exceeding this value by the class prediction score results in the recognition of the result as "unknown"',
                              default=0,
                              examples=[0.75],
                              ge=0.0,
                              le=1.0)
+
+    def minus_week(self):
+        date = datetime.strptime(self.end_date, DATE_FORMAT) - timedelta(days=7)
+        return str(date.strftime(DATE_FORMAT))
+
+    def __init__(self, **data: Any):
+        super().__init__(**data)
+        self.start_date = self.start_date or self.minus_week()
 
 
 health = APIRouter(prefix='/health')

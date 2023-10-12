@@ -1,6 +1,7 @@
 import hashlib
 import io
 import logging
+import logging as rio_logging
 import uuid
 from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor
@@ -8,7 +9,6 @@ from pathlib import Path
 from typing import Dict, Tuple, List
 
 import ee
-import logging as rio_logging
 import numpy as np
 import rasterio as rio
 import requests
