@@ -23,7 +23,9 @@ class OhsomeOps:
     def __init__(self, cache_dir: Path, resolution=(-.0001, .0001)):
         self.cache_dir: Path = cache_dir
         self.resolution = resolution
-        self.ohsome = OhsomeClient(user_agent='ClimateAction/LULC', log_dir=HydraConfig.get().runtime.output_dir)
+
+        log_dir = HydraConfig.get().runtime.output_dir if HydraConfig.initialized() else None
+        self.ohsome = OhsomeClient(user_agent='ClimateAction/LULC', log_dir=log_dir, log=HydraConfig.initialized())
 
     def labels(self, area_coords: Tuple[float, float, float, float],
                time: str,
