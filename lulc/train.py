@@ -135,7 +135,10 @@ def train(cfg: DictConfig) -> None:
                                         api_key=cfg.neptune.api_token,
                                         cache_dir=Path(cfg.cache.dir))
         energy_context.record('register')
-        registry.register_version(model, run_name, neptune_logger.experiment.get_url())
+        registry.register_version(model=model,
+                                  run_name=run_name,
+                                  run_url=neptune_logger.experiment.get_url(),
+                                  label_descriptor_version=cfg.data.descriptor.labels)
 
 
 if __name__ == '__main__':

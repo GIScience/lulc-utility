@@ -10,28 +10,10 @@ from onnxruntime import InferenceSession
 from tifffile import imread
 
 from app.api import app, DATE_FORMAT
-from lulc.data.label import LabelDescriptor
+from lulc.data.label import LabelDescriptor, resolve_osm_labels
 from lulc.data.tx.array import Normalize, Stack, NanToNum, AdjustShape
 from lulc.ops.imagery_store_operator import ImageryStore
-
-
-class TestImageryStore(ImageryStore):
-
-    def __init__(self):
-        self.last_start_date = None
-        self.last_end_date = None
-
-    def imagery(self, area_coords: Tuple, start_date: str, end_date: str,
-                resolution: int = 10) -> tuple[Dict[str, np.ndarray], tuple[int, int]]:
-        self.last_start_date = start_date
-        self.last_end_date = end_date
-
-        return {
-            's1.tif': np.random.uniform(0, 2, (512, 768, 2)).astype(np.float32),
-            's2.tif': np.random.randint(0, 255, (512, 768, 6)).astype(np.float32),
-            'dem.tif': np.random.uniform(0, 500, (512, 768, 1)).astype(np.float32),
-        }, (512, 768)
-
+from lulc.ops.osm_operator import OhsomeOps
 
 TEST_JSON_start_end = {
     'area_coords': [
@@ -63,21 +45,93 @@ TEST_JSON_no_time = {
     ]
 }
 
+TEST_JSON_favour_osm = {
+    'area_coords': [
+        7.3828125,
+        47.5172006978394,
+        7.55859375,
+        47.63578359086485
+    ],
+    'fusion_mode': 'favour_osm'
+}
+
+TEST_JSON_favour_model = {
+    'area_coords': [
+        7.3828125,
+        47.5172006978394,
+        7.55859375,
+        47.63578359086485
+    ],
+    'fusion_mode': 'favour_model'
+}
+
+TEST_JSON_mean_mixin = {
+    'area_coords': [
+        7.3828125,
+        47.5172006978394,
+        7.55859375,
+        47.63578359086485
+    ],
+    'fusion_mode': 'mean_mixin'
+}
+
 TODAY = str(datetime.now().strftime(DATE_FORMAT))
 WEEK_BEFORE = str((datetime.now() - timedelta(days=7)).strftime(DATE_FORMAT))
+
+LABELS = [
+    LabelDescriptor('unknown', 'key=value', [0, 0, 0], 'description'),
+    LabelDescriptor('built-up', 'key=value', [255, 0, 0], 'description'),
+    LabelDescriptor('forest', 'key=value', [77, 200, 0], 'description'),
+    LabelDescriptor('water', 'key=value', [130, 200, 250], 'description'),
+    LabelDescriptor('agriculture', 'key=value', [255, 255, 80], 'description')
+]
+
+
+class TestImageryStore(ImageryStore):
+
+    def __init__(self):
+        self.last_start_date = None
+        self.last_end_date = None
+
+    def imagery(self,
+                area_coords: Tuple,
+                start_date: str,
+                end_date: str,
+                resolution: int = 10) -> tuple[Dict[str, np.ndarray], tuple[int, int]]:
+        self.last_start_date = start_date
+        self.last_end_date = end_date
+
+        return {
+            's1.tif': np.random.uniform(0, 2, (512, 768, 2)).astype(np.float32),
+            's2.tif': np.random.randint(0, 255, (512, 768, 6)).astype(np.float32),
+            'dem.tif': np.random.uniform(0, 500, (512, 768, 1)).astype(np.float32),
+        }, (512, 768)
+
+
+class TestOhsomeOps(OhsomeOps):
+
+    def __init__(self):
+        super().__init__(Path('/tmp'))
+
+    def labels(self, area_coords: Tuple[float, float, float, float],
+               time: str,
+               osm_lulc_mapping: Dict,
+               target_size: Tuple[int, int]) -> Dict[str, np.ndarray]:
+
+        output = {}
+        for label in LABELS[1:]:
+            output[label.name] = np.ones(target_size, dtype=np.int64)
+
+        return output
 
 
 @pytest.fixture
 def mocked_client():
     client = TestClient(app)
     app.state.imagery_store = TestImageryStore()
-    app.state.labels = [
-        LabelDescriptor('unknown', 'key=value', [0, 0, 0], 'description'),
-        LabelDescriptor('built-up', 'key=value', [255, 0, 0], 'description'),
-        LabelDescriptor('forest', 'key=value', [77, 200, 0], 'description'),
-        LabelDescriptor('water', 'key=value', [130, 200, 250], 'description'),
-        LabelDescriptor('agriculture', 'key=value', [255, 255, 80], 'description')
-    ]
+    app.state.labels = LABELS
+    app.state.osm = TestOhsomeOps()
+    app.state.osm_lulc_mapping = resolve_osm_labels(app.state.labels)
     app.state.inference_session = InferenceSession(str(Path(__file__).parent / 'test.onnx'))
 
     def test_app_transformation_procedure(x):
@@ -100,7 +154,10 @@ def test_health(mocked_client):
     'request_body, expected_start_date, expected_end_date',
     [(TEST_JSON_start_end, '2023-05-01', '2023-06-01'),
      (TEST_JSON_end_only, '2023-05-25', '2023-06-01'),
-     (TEST_JSON_no_time, WEEK_BEFORE, TODAY)],
+     (TEST_JSON_no_time, WEEK_BEFORE, TODAY),
+     (TEST_JSON_favour_osm, WEEK_BEFORE, TODAY),
+     (TEST_JSON_favour_model, WEEK_BEFORE, TODAY)
+     ],
 )
 def test_segment_preview(mocked_client, request_body, expected_start_date, expected_end_date):
     response = mocked_client.post('/segment/preview', json=request_body)

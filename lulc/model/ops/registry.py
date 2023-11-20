@@ -23,7 +23,7 @@ class NeptuneModelRegistry:
         self.__cache_dir = cache_dir / 'ops'
         self.__cache_dir.mkdir(parents=True, exist_ok=True)
 
-    def register_version(self, model: SegformerModule, run_name: str, run_url: str):
+    def register_version(self, model: SegformerModule, run_name: str, run_url: str, label_descriptor_version: str):
         try:
             neptune.init_model(
                 name='Climate Action - LULC - SegFormer',
@@ -54,6 +54,7 @@ class NeptuneModelRegistry:
         )
         model_version['run/url'] = run_url
         model_version['model'].upload(model_path)
+        model_version['label_descriptor_version'].upload(label_descriptor_version)
         model_version.sync()
 
         log.info(f'Model {neptune_model} version has been registered: {model_version.get_url()}')

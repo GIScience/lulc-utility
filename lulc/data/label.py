@@ -15,6 +15,11 @@ class LabelDescriptor:
     description: Optional[str]
 
 
+class HashableDict(dict):
+    def __hash__(self):
+        return hash(frozenset(self))
+
+
 BACKGROUND_DESCRIPTOR = LabelDescriptor(
     'unknown',
     None,
@@ -32,3 +37,8 @@ def resolve_labels(data_dir: Path, label_descriptor_version: str) -> List[LabelD
         labels_descriptor = pd.DataFrame(yaml.safe_load(file))
         labels_descriptor['color_code'] = labels_descriptor['color_code'].apply(aux).values
         return [BACKGROUND_DESCRIPTOR] + [LabelDescriptor(**row) for _, row in labels_descriptor.iterrows()]
+
+
+def resolve_osm_labels(labels: List[LabelDescriptor]) -> HashableDict:
+    labels_dict = dict([(d.name, d.filter) for d in labels if d.filter is not None])
+    return HashableDict(labels_dict)

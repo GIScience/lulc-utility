@@ -14,4 +14,3 @@ predict_cache_size: 256
 
 # Version of the app REST API
 api_version: v1
-

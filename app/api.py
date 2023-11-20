@@ -4,31 +4,30 @@ import os
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
-from functools import lru_cache
 from pathlib import Path
-from typing import Tuple, Callable, Optional, Any
+from typing import Tuple, Optional, Any
 
 import hydra
 import numpy as np
-import numpy.ma as ma
 import rasterio
 import uvicorn
 from PIL import Image
-from fastapi import FastAPI, APIRouter, HTTPException
+from fastapi import FastAPI, APIRouter
 from hydra import compose
 from onnxruntime import InferenceSession
 from pydantic import BaseModel, Field
 from rasterio.crs import CRS
-from scipy.special import softmax
 from starlette.background import BackgroundTask
 from starlette.requests import Request
 from starlette.responses import Response, FileResponse
 
-from lulc.data.label import resolve_labels
+from app.predict import FusionMode
+from app.predict import predict
+from lulc.data.label import resolve_labels, resolve_osm_labels
 from lulc.data.tx.array import Normalize, Stack, NanToNum, AdjustShape
 from lulc.model.ops.download import NeptuneModelDownload
-from lulc.ops.exception import OperatorValidationException, OperatorInteractionException
-from lulc.ops.imagery_store_operator import ImageryStore, resolve_imagery_store
+from lulc.ops.imagery_store_operator import resolve_imagery_store
+from lulc.ops.osm_operator import OhsomeOps
 
 log = logging.getLogger(__name__)
 
@@ -51,14 +50,17 @@ async def configure_dependencies(app: FastAPI):
     cfg = compose(config_name='config')
 
     app.state.imagery_store = resolve_imagery_store(cfg.imagery, cache_dir=Path(cfg.cache.dir))
-
-    app.state.labels = resolve_labels(Path(cfg.data.dir), cfg.data.descriptor.labels)
+    app.state.osm = OhsomeOps(cache_dir=Path(cfg.cache.dir))
 
     registry = NeptuneModelDownload(model_key=cfg.neptune.model.key,
                                     project=cfg.neptune.project,
                                     api_key=cfg.neptune.api_token,
                                     cache_dir=Path(cfg.cache.dir))
-    onnx_model = registry.download_model_version(cfg.serve.model_version)
+
+    onnx_model, label_descriptor_version = registry.download_model_version(cfg.serve.model_version)
+
+    app.state.labels = resolve_labels(Path(cfg.data.dir), label_descriptor_version)
+    app.state.osm_lulc_mapping = resolve_osm_labels(app.state.labels)
     app.state.inference_session = InferenceSession(str(onnx_model))
 
     def tx(x):
@@ -70,39 +72,6 @@ async def configure_dependencies(app: FastAPI):
     app.state.tx = tx
 
     yield
-
-
-@lru_cache(maxsize=32)
-def __predict(imagery_store: ImageryStore, inference_session: InferenceSession, tx: Callable, threshold: float,
-              area_coords: Tuple[float, float, float, float], start_date: str, end_date: str):
-    """
-    Run the model inference pipeline:
-    - call the external remote sensing imagery store to acquire preprocessed data,
-    - apply data transformations to adjust the preprocessed data to model requirements,
-    - run the inference session.
-
-    :param imagery_store: operator used to communicat with the remote sensing imagery store
-    :param inference_session: ONNX inference session
-    :param tx: data transformation and adjustment pipeline
-    :param threshold: Class prediction threshold
-    :param area_coords: coordinates of the prediction target area
-    :param start_date: Lower bound (inclusive) of remote sensing imagery acquisition date (UTC)
-    :param end_date: Upper bound (inclusive) of remote sensing imagery acquisition date (UTC)
-    :return: 2D numpy array with most probable classes
-    """
-
-    try:
-        imagery, imagery_size = imagery_store.imagery(area_coords, start_date, end_date)
-        imagery = tx({'imagery': imagery})
-        logits = inference_session.run(output_names=None, input_feed=imagery)[0][0]
-        mask = softmax(logits, axis=0) < threshold
-        ma_logits = ma.array(logits, mask=mask)
-
-        return ma.argmax(ma_logits, axis=0, keepdims=False, fill_value=0).astype(np.uint8), imagery_size
-    except OperatorValidationException as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except OperatorInteractionException as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 class Body(BaseModel):
@@ -118,7 +87,9 @@ class Body(BaseModel):
                                       examples=['2023-05-01'],
                                       default=None)
     end_date: str = Field(description="Upper bound (inclusive) of remote sensing imagery acquisition date (UTC)."
-                                      "Defaults to today's date",
+                                      "Defaults to today's date"
+                                      "In case `fusion_mode` has been declared to value different than `only_model`"
+                                      "the `end_date` will also be used to acquire OSM data",
                           examples=['2023-06-01'],
                           default=str(datetime.now().strftime('%Y-%m-%d')))
     threshold: float = Field(description='Not exceeding this value by the class prediction score results in the recognition of the result as "unknown"',
@@ -126,6 +97,14 @@ class Body(BaseModel):
                              examples=[0.75],
                              ge=0.0,
                              le=1.0)
+    fusion_mode: FusionMode = Field(description='Enables merging model results with OSM data: '
+                                                '`only_model` - no fusion with OSM will take place, '
+                                                '`only_osm` - displays OSM output only, '
+                                                '`favour_model` - OSM will be used to fill in regions considered as "unknown" for the model, '
+                                                '`favour_osm` - model results will be used to fill in empty OSM data, '
+                                                '`mean_mixin` - model and OSM will simultaneously contribute to overall classification',
+                                    default=FusionMode.ONLY_MODEL,
+                                    examples=[FusionMode.ONLY_MODEL])
 
     def minus_week(self):
         date = datetime.strptime(self.end_date, DATE_FORMAT) - timedelta(days=7)
@@ -147,13 +126,16 @@ def is_ok():
 
 @segment.post('/preview', description='Run the semantic segmentation algorithm and return a preview of the result (1/4 target low-resolution, medium-compression image)')
 def segment_preview(body: Body, request: Request):
-    labels, _ = __predict(request.app.state.imagery_store,
-                          request.app.state.inference_session,
-                          request.app.state.tx,
-                          body.threshold,
-                          body.area_coords,
-                          body.start_date,
-                          body.end_date)
+    labels, _ = predict(request.app.state.imagery_store,
+                        request.app.state.osm,
+                        request.app.state.inference_session,
+                        request.app.state.tx,
+                        request.app.state.osm_lulc_mapping,
+                        body.threshold,
+                        body.area_coords,
+                        body.start_date,
+                        body.end_date,
+                        body.fusion_mode)
     labels = np.array([d.color_code for d in request.app.state.labels], dtype=np.uint8)[labels]
     labels = Image.fromarray(labels)
 
@@ -166,13 +148,16 @@ def segment_preview(body: Body, request: Request):
 
 @segment.post('/', description='Run the semantic segmentation algorithm and return a georeferenced raster (GeoTIFF)')
 def segment_compute(body: Body, request: Request):
-    labels, (h, w) = __predict(request.app.state.imagery_store,
-                               request.app.state.inference_session,
-                               request.app.state.tx,
-                               body.threshold,
-                               body.area_coords,
-                               body.start_date,
-                               body.end_date)
+    labels, (h, w) = predict(request.app.state.imagery_store,
+                             request.app.state.osm,
+                             request.app.state.inference_session,
+                             request.app.state.tx,
+                             request.app.state.osm_lulc_mapping,
+                             body.threshold,
+                             body.area_coords,
+                             body.start_date,
+                             body.end_date,
+                             body.fusion_mode)
 
     transform = rasterio.transform.from_bounds(*body.area_coords, width=w, height=h)
     file_path = Path(f'/tmp/{uuid.uuid4()}.tiff')

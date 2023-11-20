@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 
 import neptune
 
@@ -20,21 +20,26 @@ class NeptuneModelDownload:
         self.__cache_dir = cache_dir / 'ops'
         self.__cache_dir.mkdir(parents=True, exist_ok=True)
 
-    def download_model_version(self, neptune_model_version_id: Optional[str]) -> Path:
+    def download_model_version(self, neptune_model_version_id: Optional[str]) -> Tuple[Path, str]:
         if neptune_model_version_id is None:
             neptune_model_version_id = self.__fetch_latest_by_state()
 
-        log.info(f'Utilizing model {neptune_model_version_id}')
+        model_version = neptune.init_model_version(
+            with_id=neptune_model_version_id,
+            project=self.__project,
+            api_token=self.__api_token,
+        )
 
         model_file = self.__cache_dir / f'{neptune_model_version_id}.onnx'
         if not model_file.exists():
-            model_version = neptune.init_model_version(
-                with_id=neptune_model_version_id,
-                project=self.__project,
-                api_token=self.__api_token,
-            )
             model_version['model'].download(str(model_file))
-        return model_file
+
+        label_descriptor_version = model_version['label_descriptor_version'].fetch()
+
+        model_version.stop()
+
+        log.info(f'Utilizing model "{neptune_model_version_id}" with labels "{label_descriptor_version}"')
+        return model_file, label_descriptor_version
 
     def __fetch_latest_by_state(self, state='production'):
         project_id = neptune.init_project(project=self.__project, api_token=self.__api_token, mode='read-only')['sys/id'].fetch()
