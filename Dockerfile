@@ -3,7 +3,7 @@ FROM condaforge/mambaforge:23.1.0-4 AS build
 COPY environment_deploy.yaml environment.yaml
 
 RUN mamba env create -f environment.yaml && \
-    mamba install -c conda-forge conda-pack && \
+    mamba install -y -c conda-forge conda-pack && \
     conda-pack -f --ignore-missing-files -n ca-lulc-utility-deploy -o /tmp/env.tar && \
     mkdir /venv && \
     cd /venv && \
