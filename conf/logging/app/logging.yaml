@@ -1,4 +1,3 @@
-# For more information on logging configuration visit: https://docs.python.org/3/library/logging.config.html
 version: 1
 disable_existing_loggers: False
 formatters:
@@ -7,9 +6,7 @@ formatters:
 handlers:
   console:
     class: logging.StreamHandler
-    level: INFO
     formatter: timestamped
     stream: ext://sys.stdout
 root:
-  level: INFO
-  handlers: [ console ]
+  handlers: [console]

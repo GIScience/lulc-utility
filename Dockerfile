@@ -28,5 +28,5 @@ ENV PYTHONPATH "${PYTHONPATH}:/ca-lulc-utility/lulc"
 
 SHELL ["/bin/bash", "-c"]
 ENTRYPOINT source /ca-lulc-utility/venv/bin/activate && \
-           uvicorn app.api:app --host 0.0.0.0 --port 8000 --root-path ${ROOT_PATH:-'/'} --log-config=conf/logging/app/logging.yaml
+           python app/api.py
 EXPOSE 8000

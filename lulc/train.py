@@ -1,10 +1,12 @@
-import logging
+import logging.config
+import os
 from pathlib import Path
 from shutil import rmtree
 
 import hydra
 import lightning.pytorch as pl
 import torch
+import yaml
 from coolname import generate_slug
 from hydra.core.hydra_config import HydraConfig
 from lightning import seed_everything
@@ -22,6 +24,8 @@ from lulc.model.ops.registry import NeptuneModelRegistry
 from lulc.monitoring.energy import EnergyContext
 from lulc.ops.imagery_store_operator import resolve_imagery_store
 
+log_level = os.getenv('LOG_LEVEL', 'INFO')
+log_config = 'conf/logging/app/logging.yaml'
 log = logging.getLogger(__name__)
 
 
@@ -142,4 +146,8 @@ def train(cfg: DictConfig) -> None:
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=log_level.upper())
+    with open(log_config) as file:
+        logging.config.dictConfig(yaml.safe_load(file))
+    log.info('Starting model training')
     train()

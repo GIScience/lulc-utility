@@ -1,9 +1,16 @@
+import logging.config
+import os
 from pathlib import Path
 
 import hydra
+import yaml
 from omegaconf import DictConfig
 
 from lulc.data.grid import GridCalculator
+
+log_level = os.getenv('LOG_LEVEL', 'INFO')
+log_config = 'conf/logging/app/logging.yaml'
+log = logging.getLogger(__name__)
 
 
 @hydra.main(version_base=None, config_path='../conf', config_name='area_descriptor')
@@ -27,4 +34,8 @@ def compute_area_descriptor(cfg: DictConfig) -> None:
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=log_level.upper())
+    with open(log_config) as file:
+        logging.config.dictConfig(yaml.safe_load(file))
+    log.info('Computing area desciptor')
     compute_area_descriptor()

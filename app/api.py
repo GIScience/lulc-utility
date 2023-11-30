@@ -1,5 +1,5 @@
 import io
-import logging
+import logging.config
 import os
 import uuid
 from contextlib import asynccontextmanager
@@ -11,6 +11,7 @@ import hydra
 import numpy as np
 import rasterio
 import uvicorn
+import yaml
 from PIL import Image
 from fastapi import FastAPI, APIRouter
 from hydra import compose
@@ -29,9 +30,11 @@ from lulc.model.ops.download import NeptuneModelDownload
 from lulc.ops.imagery_store_operator import resolve_imagery_store
 from lulc.ops.osm_operator import OhsomeOps
 
-log = logging.getLogger(__name__)
-
 config_dir = os.getenv('LULC_UTILITY_APP_CONFIG_DIR', str(Path('conf').absolute()))
+
+log_level = os.getenv('LOG_LEVEL', 'INFO')
+log_config = f'{config_dir}/logging/app/logging.yaml'
+log = logging.getLogger(__name__)
 
 DATE_FORMAT = '%Y-%m-%d'
 
@@ -45,6 +48,7 @@ async def configure_dependencies(app: FastAPI):
     :param app: web application instance
     :return: context manager generator
     """
+    log.info('Initialising...')
 
     hydra.initialize_config_dir(config_dir=config_dir, version_base=None)
     cfg = compose(config_name='config')
@@ -71,28 +75,33 @@ async def configure_dependencies(app: FastAPI):
 
     app.state.tx = tx
 
+    log.info('Initialisation completed')
+
     yield
 
 
 class Body(BaseModel):
-    area_coords: Tuple[float, float, float, float] = Field(description='Bounding box coordinates in WGS 84 (left, bottom, right, top)',
+    area_coords: Tuple[float, float, float, float] = Field(description='Bounding box coordinates in WGS 84 '
+                                                                       '(left, bottom, right, top)',
                                                            examples=[[12.304687500000002,
                                                                       48.2246726495652,
                                                                       12.480468750000002,
                                                                       48.3416461723746]])
-    start_date: Optional[str] = Field(description='Lower bound (inclusive) of remote sensing imagery acquisition date (UTC). '
-                                                  'The model uses an image stack of multiple acquisition times for predictions. '
-                                                  'Larger time intervals will improve the prediction accuracy'
-                                                  'If not set it will be automatically set to the week before `end_date`',
+    start_date: Optional[str] = Field(description='Lower bound (inclusive) of remote sensing imagery acquisition '
+                                                  'date (UTC). The model uses an image stack of multiple acquisition '
+                                                  'times for predictions. Larger time intervals will improve the '
+                                                  'prediction accuracy. If not set it will be automatically set to '
+                                                  'the week before `end_date`',
                                       examples=['2023-05-01'],
                                       default=None)
-    end_date: str = Field(description="Upper bound (inclusive) of remote sensing imagery acquisition date (UTC)."
+    end_date: str = Field(description='Upper bound (inclusive) of remote sensing imagery acquisition date (UTC).'
                                       "Defaults to today's date"
-                                      "In case `fusion_mode` has been declared to value different than `only_model`"
-                                      "the `end_date` will also be used to acquire OSM data",
+                                      'In case `fusion_mode` has been declared to value different than `only_model`'
+                                      'the `end_date` will also be used to acquire OSM data',
                           examples=['2023-06-01'],
                           default=str(datetime.now().strftime('%Y-%m-%d')))
-    threshold: float = Field(description='Not exceeding this value by the class prediction score results in the recognition of the result as "unknown"',
+    threshold: float = Field(description='Not exceeding this value by the class prediction score results in the '
+                                         'recognition of the result as "unknown"',
                              default=0,
                              examples=[0.75],
                              ge=0.0,
@@ -100,9 +109,11 @@ class Body(BaseModel):
     fusion_mode: FusionMode = Field(description='Enables merging model results with OSM data: '
                                                 '`only_model` - no fusion with OSM will take place, '
                                                 '`only_osm` - displays OSM output only, '
-                                                '`favour_model` - OSM will be used to fill in regions considered as "unknown" for the model, '
+                                                '`favour_model` - OSM will be used to fill in regions considered as '
+                                                '"unknown" for the model, '
                                                 '`favour_osm` - model results will be used to fill in empty OSM data, '
-                                                '`mean_mixin` - model and OSM will simultaneously contribute to overall classification',
+                                                '`mean_mixin` - model and OSM will simultaneously contribute to '
+                                                'overall classification',
                                     default=FusionMode.ONLY_MODEL,
                                     examples=[FusionMode.ONLY_MODEL])
 
@@ -124,8 +135,12 @@ def is_ok():
     return {'status': 'ok'}
 
 
-@segment.post('/preview', description='Run the semantic segmentation algorithm and return a preview of the result (1/4 target low-resolution, medium-compression image)')
+@segment.post('/preview',
+              description='Run the semantic segmentation algorithm and return a preview of the result '
+                          '(1/4 target low-resolution, medium-compression image)')
 def segment_preview(body: Body, request: Request):
+    log.info(f'Creating preview for {body}')
+
     labels, _ = predict(request.app.state.imagery_store,
                         request.app.state.osm,
                         request.app.state.inference_session,
@@ -143,11 +158,15 @@ def segment_preview(body: Body, request: Request):
     labels.save(buf, format='PNG')
     buf.seek(0)
 
+    log.info(f'Finished creating preview for {body}')
+
     return Response(buf.getvalue(), media_type='image/png')
 
 
 @segment.post('/', description='Run the semantic segmentation algorithm and return a georeferenced raster (GeoTIFF)')
 def segment_compute(body: Body, request: Request):
+    log.info(f'Creating segementation for {body}')
+
     labels, (h, w) = predict(request.app.state.imagery_store,
                              request.app.state.osm,
                              request.app.state.inference_session,
@@ -178,6 +197,8 @@ def segment_compute(body: Body, request: Request):
         dst.write(labels, 1)
         dst.write_colormap(1, dict(enumerate([d.color_code for d in request.app.state.labels])))
 
+    log.info(f'Finished creating segmentation for {body}')
+
     return FileResponse(file_path,
                         media_type='image/geotiff',
                         filename='segmentation.tiff',
@@ -194,4 +215,13 @@ app.include_router(segment)
 app.include_router(health)
 
 if __name__ == '__main__':
-    uvicorn.run(app, host='0.0.0.0', port=int(os.getenv('LULC_UTILITY_API_PORT', 8000)), log_config=f'{config_dir}/logging/app/logging.yaml')
+    logging.basicConfig(level=log_level.upper())
+    with open(log_config) as file:
+        logging.config.dictConfig(yaml.safe_load(file))
+    log.info('Starting LULC Utility')
+    uvicorn.run(app,
+                host='0.0.0.0',
+                port=int(os.getenv('LULC_UTILITY_API_PORT', 8000)),
+                root_path=os.getenv('ROOT_PATH', '/'),
+                log_config=log_config,
+                log_level=log_level.lower())

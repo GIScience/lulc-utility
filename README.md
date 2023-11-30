@@ -43,6 +43,7 @@ To check whether such a device is available on your machine, run `nvidia-smi` in
 
 Note that the repository supports pre commit hooks defined in the `.pre-commit-config.yaml` file.
 For the description of each hook visit the documentation of:
+
 - [git pre-commit hooks](https://github.com/pre-commit/pre-commit-hooks)
 - [ruff pre-commit hooks](https://github.com/astral-sh/ruff-pre-commit)
 
@@ -100,6 +101,7 @@ The following environmental variables have to beset before running the training 
 | NEPTUNE_MODE              | Any of https://docs.neptune.ai/api/connection_modes/     |
 | SENTINELHUB_API_ID        | Id acquired from SentinelHub dashboard                   |
 | SENTINELHUB_API_SECRET    | Token acquired from SentinelHub dashboard                |
+| LOG_LEVEL                 | The minimum level for log messages                       |
 
 The training process can be parametrized using relevant configuration files. Visit [`./conf/**/*.yaml`](conf) for
 reference.

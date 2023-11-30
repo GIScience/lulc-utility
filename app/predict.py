@@ -1,3 +1,4 @@
+import logging
 from enum import Enum
 from functools import lru_cache
 from typing import Tuple, Callable
@@ -12,6 +13,8 @@ from lulc.data.tx.array import ReclassifyMerge
 from lulc.ops.exception import OperatorValidationException, OperatorInteractionException
 from lulc.ops.imagery_store_operator import ImageryStore
 from lulc.ops.osm_operator import OhsomeOps
+
+log = logging.getLogger(__name__)
 
 
 class FusionMode(Enum):
@@ -50,12 +53,14 @@ def predict(imagery_store: ImageryStore,
     :param fusion_mode: determine whether and how model data has to be merged with OSM data
     :return: 2D numpy array with most probable classes
     """
+    log.debug('Running model inference pipeline')
 
     try:
         imagery, imager_size = imagery_store.imagery(area_coords, start_date, end_date)
         imagery = tx({'imagery': imagery})
         logits = inference_session.run(output_names=None, input_feed=imagery)[0][0]
         labels = __fusion(osm, osm_lulc_mapping, threshold, area_coords, end_date, fusion_mode, logits)
+        log.debug('Model inference pipeline completed')
         return labels, imager_size
     except OperatorValidationException as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -70,6 +75,7 @@ def __fusion(osm: OhsomeOps,
              date: str,
              fusion_mode: FusionMode,
              logits: np.ndarray):
+    log.debug(f'Fusing predictions in {fusion_mode} mode')
     pred = softmax(logits, axis=0)
 
     def masked_argmax(x):
@@ -98,5 +104,7 @@ def __fusion(osm: OhsomeOps,
             labels = osm_labels
         else:
             raise ValueError(f'Fusion mode {fusion_mode} not supported')
+
+    log.debug(f'Predictions fused in {fusion_mode} mode')
 
     return labels

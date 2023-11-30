@@ -1,8 +1,10 @@
-import logging
+import logging.config
+import os
 from pathlib import Path
 from shutil import rmtree
 
 import hydra
+import yaml
 from omegaconf import DictConfig
 from torch.utils.data import DataLoader
 from torchvision import transforms
@@ -13,6 +15,8 @@ from lulc.data.stats import dataset_iter_statistics
 from lulc.data.tx.array import Stack, ReclassifyMerge, NanToNum
 from lulc.ops.imagery_store_operator import resolve_imagery_store
 
+log_level = os.getenv('LOG_LEVEL', 'INFO')
+log_config = 'conf/logging/app/logging.yaml'
 log = logging.getLogger(__name__)
 
 
@@ -58,4 +62,8 @@ def calculate_dataset_statistics(cfg: DictConfig) -> None:
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=log_level.upper())
+    with open(log_config) as file:
+        logging.config.dictConfig(yaml.safe_load(file))
+    log.info('Calculating dataset statistics')
     calculate_dataset_statistics()
