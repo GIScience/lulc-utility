@@ -1,24 +1,24 @@
 - name: built-up
   filter: landuse=civic_admin or landuse=commercial or landuse=depot or landuse=education or landuse=farmyard or landuse=garages or landuse=industrial or landuse=railway or landuse=residential or landuse=retail
-  color_code: '#FFFEFE'
+  color_code: '#ff0000'
   description: 'This class is a combination of land-use classes that should consist of mostly built-up land cover.'
 - name: forest
   filter: landuse=forest or natural=wood
-  color_code: '#647E43'
+  color_code: '#4dc800'
   description: 'Managed and unmanaged tree covers.'
 - name: water
   filter: landuse=reservoir or natural=water or waterway=dock or waterway=riverbank
-  color_code: '#011959'
+  color_code: '#82c8fa'
   description:
 - name: farmland
   filter: landuse=farmland
-  color_code: '#D0A35A'
+  color_code: '#ffff50'
   description: 'Agricultural land that is regularly tilled.'
 - name: permanent_crops
   filter: landuse=vineyard or landuse=orchard
-  color_code: '#396E59'
+  color_code: '#e68000'
   description:
 - name: grass
   filter: landuse=meadow or landuse=grass or natural=grassland
-  color_code: '#9A9132'
+  color_code: '#cdebb0'
   description: 'There is no distinction between urban green spaces, grasslands and pastures.'
