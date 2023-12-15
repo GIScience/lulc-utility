@@ -152,6 +152,13 @@ docker build . --tag heigit/ca-lulc-utility:devel
 docker image push heigit/ca-lulc-utility:devel
 ```
 
+## Development
+
+### Linting
+
+Make sure to install the pre-commit hooks before contributing to the project: `pre-commit install`.
+
+
 [^1]: Note that for Neptune.ai, `debug` mode does not work. We suggest using `read-only` for testing.
 
 

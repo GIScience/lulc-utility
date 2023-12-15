@@ -5,9 +5,11 @@ unit_tests:
   variables:
     CONDA_PKGS_DIRS: "$CI_PROJECT_DIR/.conda-pkgs-cache/"
     PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+    PRE_COMMIT_HOME: "$CI_PROJECT_DIR/.cache/pre-commit"
   cache:
     key: test-cache
     paths:
+      - $PRE_COMMIT_HOME
       - $CONDA_PKGS_DIRS/*.conda
       - $CONDA_PKGS_DIRS/*.tar.bz2
       - $CONDA_PKGS_DIRS/urls*
@@ -17,6 +19,7 @@ unit_tests:
     - mamba env create -f environment_cpu.yaml -v
     - mamba init bash
     - source ~/.bashrc
+    - conda run -n ca-lulc-utility-ci pre-commit run --all-files
     - conda run -n ca-lulc-utility-ci pytest -m "not external" --ignore=$CONDA_PKGS_DIRS .
 
 docker_build_deploy:
