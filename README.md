@@ -128,7 +128,7 @@ export PYTHONPATH="lulc:$PYTHONPATH"
 python app/api.py
 ```
 
-> Go to [localhost:8000](http://localhost:8000) to see the API in action.
+> Go to [localhost:8000](http://localhost:8000/docs) to see the API in action.
 
 ### Docker
 
