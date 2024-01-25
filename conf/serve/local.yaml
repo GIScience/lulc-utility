@@ -4,9 +4,9 @@ host: localhost
 # Model serving API host
 port: 8000
 
-# Served model version.
+# Served model version, e.g. CA-LULC-21
 # If none it will be automatically resolved to latest, production model
-model_version: CA-LULC-21
+model_version:
 
 # Number of predictions stored in an ephemeral cache.
 # Used as an idempotency mechanism.
