@@ -19,7 +19,7 @@ matmul_precision: high
 
 # Number of workers used during dataset preparation.
 # The more, the faster the process will be and will consume more resources (CPU, IO)
-workers: 1
+workers: 8
 
 # Number of images used to create segmentation progress visualisations.
 max_image_samples: 3

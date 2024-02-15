@@ -7,15 +7,32 @@ area:
   # More: https://sentinelhub-py.readthedocs.io/en/latest/examples/large_area_utilities.html
   split_mode: osm
 
-  # Research timespan. Only data from the declared period will be used during dataset computation
-  timeframe:
-    start_date: 2023-05-01
-    end_date: 2023-06-01
+  # Research timespans. Only data from the declared period will be used during dataset computation
+  timeframes:
+    - [ 2020-05-01, 2020-05-31 ]
+    - [ 2020-06-01, 2020-06-30 ]
+    - [ 2020-07-01, 2020-07-31 ]
+    - [ 2020-08-01, 2020-08-30 ]
+    - [ 2020-09-01, 2020-09-30 ]
+    - [ 2021-05-01, 2021-05-31 ]
+    - [ 2021-06-01, 2021-06-30 ]
+    - [ 2021-07-01, 2021-07-31 ]
+    - [ 2021-08-01, 2021-08-30 ]
+    - [ 2021-09-01, 2021-09-30 ]
+    - [ 2022-05-01, 2022-05-31 ]
+    - [ 2022-06-01, 2022-06-30 ]
+    - [ 2022-07-01, 2022-07-31 ]
+    - [ 2022-08-01, 2022-08-30 ]
+    - [ 2022-09-01, 2022-09-30 ]
+    - [ 2023-05-01, 2023-05-31 ]
+    - [ 2023-06-01, 2023-06-30 ]
+    - [ 2023-07-01, 2023-07-31 ]
+    - [ 2023-08-01, 2023-08-30 ]
+    - [ 2023-09-01, 2023-09-30 ]
 
   # Areas that will be incorporated into the dataset
   target_nuts_ids:
-    - DE1
-    - DE2
+    - DE12
 
   # Directory where the descriptor will be placed after calculation
   output_dir: ./data/area

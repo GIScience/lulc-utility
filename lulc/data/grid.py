@@ -7,6 +7,7 @@ from typing import List, Tuple
 import contextily as cx
 import geopandas as gpd
 import matplotlib.pyplot as plt
+import pandas as pd
 from sentinelhub import OsmSplitter, CRS, UtmZoneSplitter
 from shapely.geometry import MultiPolygon, Polygon
 
@@ -32,7 +33,7 @@ class GridCalculator:
         else:
             raise ValueError(f'Split mode {split_mode} not available')
 
-    def split(self, target_nuts_ids: List[str]):
+    def split(self, target_nuts_ids: List[str]) -> pd.DataFrame:
         sub_gdf = self.gdf[self.gdf[self.nuts_id_col].isin(target_nuts_ids)].copy()
         sub_gdf['geometry'] = [MultiPolygon([f]) if isinstance(f, Polygon) else f for f in sub_gdf['geometry']]
         osm_splitter = self.splitter(shape_list=sub_gdf.geometry.to_list(), crs=CRS.WGS84)
@@ -46,16 +47,15 @@ class GridCalculator:
             descriptor.append(coords)
             geometry.append(bbox.geometry)
 
-        result_uuid = uuid.uuid4()
-        descriptor_csv = str(self.output_dir / f'area_{result_uuid}.csv')
-        descriptor_png = str(self.output_dir / f'area_{result_uuid}.png')
-
-        log.info(f'Persisting descriptor {descriptor_csv}')
         df = gpd.GeoDataFrame(descriptor, columns=DESCRIPTOR_COLUMNS, geometry=geometry, crs=str(osm_splitter.crs))
-        df.to_csv(descriptor_csv, index=False)
 
-        log.info(f'Persisting descriptor visualization: {descriptor_png}')
-        ax = df.plot(figsize=(25, 25), alpha=0.3, edgecolor='black', lw=0.7)
-        cx.add_basemap(ax, crs=df.crs)
-        plt.savefig(descriptor_png, bbox_inches='tight', pad_inches=0)
-        plt.close()
+        descriptor_png = self.output_dir / 'area_output.png'
+        if not descriptor_png.exists():
+            log.info(f'Persisting descriptor visualization: {descriptor_png}')
+            ax = df.plot(figsize=(25, 25), alpha=0.3, edgecolor='black', lw=0.7)
+            plt.title(f'NUTS: {target_nuts_ids}, start_date: ${self.start_date}, end_date: ${self.end_date}')
+            cx.add_basemap(ax, crs=df.crs, source=cx.providers.CartoDB.Positron)
+            plt.savefig(str(descriptor_png), bbox_inches='tight', pad_inches=0)
+            plt.close()
+
+        return df
