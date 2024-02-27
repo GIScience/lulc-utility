@@ -1,6 +1,6 @@
 import logging
 import math
-from typing import List, Any
+from typing import List, Any, Tuple
 
 import lightning.pytorch as pl
 import matplotlib.pyplot as plt
@@ -59,7 +59,7 @@ class SegformerModule(pl.LightningModule):
                  lr: float,
                  device: torch.device,
                  class_weights: List[float],
-                 color_codes: List[List[int]],
+                 color_codes: List[Tuple[int, int, int]],
                  max_image_samples=5,
                  temperature=1.0,
                  label_smoothing=0.0,
@@ -99,7 +99,8 @@ class SegformerModule(pl.LightningModule):
                 'f1': F1Score(task='multiclass', num_classes=num_labels),
                 'precision': Precision(task='multiclass', num_classes=num_labels),
                 'recall': Recall(task='multiclass', num_classes=num_labels),
-                'confusion_matrix': ConfusionMatrix2D(task='multiclass', num_classes=num_labels, normalize='true', labels=labels)
+                'confusion_matrix': ConfusionMatrix2D(task='multiclass', num_classes=num_labels, normalize='true',
+                                                      labels=labels)
             }
 
     def on_fit_start(self) -> None:

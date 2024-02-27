@@ -3,9 +3,9 @@ import logging.config
 import os
 import uuid
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from pathlib import Path
-from typing import Tuple, Optional, Any
+from typing import Tuple, Optional, Dict
 
 import hydra
 import numpy as np
@@ -16,7 +16,8 @@ from PIL import Image
 from fastapi import FastAPI, APIRouter
 from hydra import compose
 from onnxruntime import InferenceSession
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, confloat
+from pydantic import model_validator
 from rasterio.crs import CRS
 from starlette.background import BackgroundTask
 from starlette.requests import Request
@@ -24,7 +25,7 @@ from starlette.responses import Response, FileResponse
 
 from app.predict import FusionMode
 from app.predict import predict
-from lulc.data.label import resolve_labels, resolve_osm_labels
+from lulc.data.label import resolve_labels, resolve_osm_labels, LabelDescriptor
 from lulc.data.tx.array import Normalize, Stack, NanToNum, AdjustShape
 from lulc.model.ops.download import NeptuneModelDownload
 from lulc.ops.imagery_store_operator import resolve_imagery_store
@@ -37,6 +38,18 @@ log_config = f'{config_dir}/logging/app/logging.yaml'
 log = logging.getLogger(__name__)
 
 DATE_FORMAT = '%Y-%m-%d'
+
+
+class HealthCheck(BaseModel):
+    status: str = 'ok'
+
+
+class ImageResponse(Response):
+    media_type = 'image/png'
+
+
+class GeoTiffResponse(FileResponse):
+    media_type = 'image/geotiff'
 
 
 @asynccontextmanager
@@ -80,50 +93,67 @@ async def configure_dependencies(app: FastAPI):
     yield
 
 
-class Body(BaseModel):
-    area_coords: Tuple[float, float, float, float] = Field(description='Bounding box coordinates in WGS 84 '
-                                                                       '(left, bottom, right, top)',
-                                                           examples=[[12.304687500000002,
-                                                                      48.2246726495652,
-                                                                      12.480468750000002,
-                                                                      48.3416461723746]])
-    start_date: Optional[str] = Field(description='Lower bound (inclusive) of remote sensing imagery acquisition '
-                                                  'date (UTC). The model uses an image stack of multiple acquisition '
-                                                  'times for predictions. Larger time intervals will improve the '
-                                                  'prediction accuracy. If not set it will be automatically set to '
-                                                  'the week before `end_date`',
-                                      examples=['2023-05-01'],
-                                      default=None)
-    end_date: str = Field(description='Upper bound (inclusive) of remote sensing imagery acquisition date (UTC).'
-                                      "Defaults to today's date"
-                                      'In case `fusion_mode` has been declared to value different than `only_model`'
-                                      'the `end_date` will also be used to acquire OSM data',
-                          examples=['2023-06-01'],
-                          default=str(datetime.now().strftime('%Y-%m-%d')))
-    threshold: float = Field(description='Not exceeding this value by the class prediction score results in the '
-                                         'recognition of the result as "unknown"',
-                             default=0,
-                             examples=[0.75],
-                             ge=0.0,
-                             le=1.0)
-    fusion_mode: FusionMode = Field(description='Enables merging model results with OSM data: '
-                                                '`only_model` - no fusion with OSM will take place, '
-                                                '`only_osm` - displays OSM output only, '
-                                                '`favour_model` - OSM will be used to fill in regions considered as '
-                                                '"unknown" for the model, '
-                                                '`favour_osm` - model results will be used to fill in empty OSM data, '
-                                                '`mean_mixin` - model and OSM will simultaneously contribute to '
-                                                'overall classification',
-                                    default=FusionMode.ONLY_MODEL,
-                                    examples=[FusionMode.ONLY_MODEL])
+class LulcWorkUnit(BaseModel):
+    """LULC area of interest."""
 
-    def minus_week(self):
-        date = datetime.strptime(self.end_date, DATE_FORMAT) - timedelta(days=7)
-        return str(date.strftime(DATE_FORMAT))
+    area_coords: Tuple[
+        confloat(ge=-180, le=180), confloat(ge=-90, le=90), confloat(ge=-180, le=180), confloat(ge=-90, le=90)
+    ] = Field(
+        title='Area Coordinates',
+        description='Bounding box coordinates in WGS 84 (west, south, east, north)',
+        examples=[
+            [
+                12.304687500000002,
+                48.2246726495652,
+                12.480468750000002,
+                48.3416461723746,
+            ]
+        ],
+    )
+    start_date: Optional[date] = Field(
+        title='Start Date',
+        description='Lower bound (inclusive) of remote sensing imagery acquisition date (UTC). '
+                    'The model uses an image stack of multiple acquisition times for predictions. '
+                    'Larger time intervals will improve the prediction accuracy'
+                    'If not set it will be automatically set to the week before `end_date`',
+        examples=['2023-05-01'],
+        default=None,
+    )
+    end_date: date = Field(
+        title='End Date',
+        description='Upper bound (inclusive) of remote sensing imagery acquisition date (UTC).'
+                    "Defaults to today's date"
+                    'In case `fusion_mode` has been declared to value different than `only_model`'
+                    'the `end_date` will also be used to acquire OSM data',
+        examples=['2023-06-01'],
+        default=datetime.now().date(),
+    )
+    threshold: confloat(ge=0.0, le=1.0) = Field(
+        title='Threshold',
+        description='Not exceeding this value by the class prediction score results in the recognition of the result '
+                    'as "unknown"',
+        default=0,
+        examples=[0.75],
+    )
+    fusion_mode: FusionMode = Field(
+        title='Fusion Mode',
+        description='Enables merging model results with OSM data: '
+                    '`only_model` - no fusion with OSM will take place, '
+                    '`only_osm` - displays OSM output only, '
+                    '`favour_model` - OSM will be used to fill in regions considered as '
+                    '"unknown" for the model, '
+                    '`favour_osm` - model results will be used to fill in empty OSM data, '
+                    '`mean_mixin` - model and OSM will simultaneously contribute to '
+                    'overall classification',
+        default=FusionMode.ONLY_MODEL,
+        examples=[FusionMode.ONLY_MODEL],
+    )
 
-    def __init__(self, **data: Any):
-        super().__init__(**data)
-        self.start_date = self.start_date or self.minus_week()
+    @model_validator(mode='after')
+    def minus_week(self) -> 'LulcWorkUnit':
+        if not self.start_date:
+            self.start_date = self.end_date - timedelta(days=7)
+        return self
 
 
 health = APIRouter(prefix='/health')
@@ -131,14 +161,15 @@ segment = APIRouter(prefix='/segment')
 
 
 @health.get('', status_code=200, description='Verify whether the application API is operational')
-def is_ok():
-    return {'status': 'ok'}
+def is_ok() -> HealthCheck:
+    return HealthCheck()
 
 
 @segment.post('/preview',
               description='Run the semantic segmentation algorithm and return a preview of the result '
-                          '(1/4 target low-resolution, medium-compression image)')
-def segment_preview(body: Body, request: Request):
+                          '(1/4 target low-resolution, medium-compression image)',
+              response_class=ImageResponse)
+def segment_preview(body: LulcWorkUnit, request: Request) -> ImageResponse:
     log.info(f'Creating preview for {body}')
 
     labels, _ = predict(request.app.state.imagery_store,
@@ -148,10 +179,10 @@ def segment_preview(body: Body, request: Request):
                         request.app.state.osm_lulc_mapping,
                         body.threshold,
                         body.area_coords,
-                        body.start_date,
-                        body.end_date,
+                        body.start_date.isoformat(),
+                        body.end_date.isoformat(),
                         body.fusion_mode)
-    labels = np.array([d.color_code for d in request.app.state.labels], dtype=np.uint8)[labels]
+    labels = np.array([d.color for d in request.app.state.labels], dtype=np.uint8)[labels]
     labels = Image.fromarray(labels)
 
     buf = io.BytesIO()
@@ -160,11 +191,13 @@ def segment_preview(body: Body, request: Request):
 
     log.info(f'Finished creating preview for {body}')
 
-    return Response(buf.getvalue(), media_type='image/png')
+    return ImageResponse(buf.getvalue(), media_type='image/png')
 
 
-@segment.post('/', description='Run the semantic segmentation algorithm and return a georeferenced raster (GeoTIFF)')
-def segment_compute(body: Body, request: Request):
+@segment.post('/',
+              description='Run the semantic segmentation algorithm and return a georeferenced raster (GeoTIFF)',
+              response_class=GeoTiffResponse)
+def segment_compute(body: LulcWorkUnit, request: Request) -> GeoTiffResponse:
     log.info(f'Creating segementation for {body}')
 
     labels, (h, w) = predict(request.app.state.imagery_store,
@@ -174,8 +207,8 @@ def segment_compute(body: Body, request: Request):
                              request.app.state.osm_lulc_mapping,
                              body.threshold,
                              body.area_coords,
-                             body.start_date,
-                             body.end_date,
+                             body.start_date.isoformat(),
+                             body.end_date.isoformat(),
                              body.fusion_mode)
 
     transform = rasterio.transform.from_bounds(*body.area_coords, width=w, height=h)
@@ -195,19 +228,19 @@ def segment_compute(body: Body, request: Request):
                        nodata=None,
                        transform=transform) as dst:
         dst.write(labels, 1)
-        dst.write_colormap(1, dict(enumerate([d.color_code for d in request.app.state.labels])))
+        dst.write_colormap(1, dict(enumerate([d.color for d in request.app.state.labels])))
 
     log.info(f'Finished creating segmentation for {body}')
 
-    return FileResponse(file_path,
-                        media_type='image/geotiff',
-                        filename='segmentation.tiff',
-                        background=BackgroundTask(unlink))
+    return GeoTiffResponse(file_path,
+                           media_type='image/geotiff',
+                           filename='segmentation.tiff',
+                           background=BackgroundTask(unlink))
 
 
 @segment.get('/describe', description='Return semantic segmentation labels dictionary')
-def segment_describe(request: Request):
-    return request.app.state.labels
+def segment_describe(request: Request) -> Dict[str, LabelDescriptor]:
+    return {label.name: label for label in request.app.state.labels}
 
 
 app = FastAPI(lifespan=configure_dependencies)

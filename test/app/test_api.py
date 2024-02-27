@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from onnxruntime import InferenceSession
 from tifffile import imread
 
-from app.api import app, DATE_FORMAT
+from app.api import app
 from lulc.data.label import LabelDescriptor, resolve_osm_labels
 from lulc.data.tx.array import Normalize, Stack, NanToNum, AdjustShape
 from lulc.ops.imagery_store_operator import ImageryStore
@@ -75,15 +75,35 @@ TEST_JSON_mean_mixin = {
     'fusion_mode': 'mean_mixin'
 }
 
-TODAY = str(datetime.now().strftime(DATE_FORMAT))
-WEEK_BEFORE = str((datetime.now() - timedelta(days=7)).strftime(DATE_FORMAT))
+TODAY = datetime.now().date().isoformat()
+WEEK_BEFORE = (datetime.now() - timedelta(days=7)).date().isoformat()
 
 LABELS = [
-    LabelDescriptor('unknown', 'key=value', [0, 0, 0], 'description'),
-    LabelDescriptor('built-up', 'key=value', [255, 0, 0], 'description'),
-    LabelDescriptor('forest', 'key=value', [77, 200, 0], 'description'),
-    LabelDescriptor('water', 'key=value', [130, 200, 250], 'description'),
-    LabelDescriptor('agriculture', 'key=value', [255, 255, 80], 'description')
+    LabelDescriptor(name='unknown',
+                    osm_filter='key=value',
+                    color=(0, 0, 0),
+                    description='description',
+                    raster_value=0),
+    LabelDescriptor(name='built-up',
+                    osm_filter='key=value',
+                    color=(255, 0, 0),
+                    description='description',
+                    raster_value=1),
+    LabelDescriptor(name='forest',
+                    osm_filter='key=value',
+                    color=(77, 200, 0),
+                    description='description',
+                    raster_value=2),
+    LabelDescriptor(name='water',
+                    osm_filter='key=value',
+                    color=(130, 200, 250),
+                    description='description',
+                    raster_value=3),
+    LabelDescriptor(name='agriculture',
+                    osm_filter='key=value',
+                    color=(255, 255, 80),
+                    description='description',
+                    raster_value=4)
 ]
 
 
@@ -117,7 +137,6 @@ class TestOhsomeOps(OhsomeOps):
                time: str,
                osm_lulc_mapping: Dict,
                target_size: Tuple[int, int]) -> Dict[str, np.ndarray]:
-
         output = {}
         for label in LABELS[1:]:
             output[label.name] = np.ones(target_size, dtype=np.int64)
@@ -177,8 +196,29 @@ def test_segment_image(mocked_client):
 
 def test_segment_describe(mocked_client):
     response = mocked_client.get('/segment/describe')
-    assert response.json() == [{'name': 'unknown', 'filter': 'key=value', 'color_code': [0, 0, 0], 'description': 'description'},
-                               {'name': 'built-up', 'filter': 'key=value', 'color_code': [255, 0, 0], 'description': 'description'},
-                               {'name': 'forest', 'filter': 'key=value', 'color_code': [77, 200, 0], 'description': 'description'},
-                               {'name': 'water', 'filter': 'key=value', 'color_code': [130, 200, 250], 'description': 'description'},
-                               {'name': 'agriculture', 'filter': 'key=value', 'color_code': [255, 255, 80], 'description': 'description'}]
+    assert response.json() == {
+        'unknown': {'name': 'unknown',
+                    'osm_filter': 'key=value',
+                    'color': [0, 0, 0],
+                    'description': 'description',
+                    'raster_value': 0, },
+        'built-up': {'name': 'built-up',
+                     'osm_filter': 'key=value',
+                     'color': [255, 0, 0],
+                     'description': 'description',
+                     'raster_value': 1, },
+        'forest': {'name': 'forest',
+                   'osm_filter': 'key=value',
+                   'color': [77, 200, 0],
+                   'description': 'description',
+                   'raster_value': 2, },
+        'water': {'name': 'water',
+                  'osm_filter': 'key=value',
+                  'color': [130, 200, 250],
+                  'description': 'description',
+                  'raster_value': 3, },
+        'agriculture': {'name': 'agriculture',
+                        'osm_filter': 'key=value',
+                        'color': [255, 255, 80],
+                        'description': 'description',
+                        'raster_value': 4, }}
