@@ -30,8 +30,8 @@ class AreaDataset(Dataset):
 
         label_descriptors = resolve_labels(data_dir, label_descriptor_ver)
         self.labels = [d.name for d in label_descriptors]
-        self.osm_lulc_mapping = dict([(d.name, d.filter) for d in label_descriptors if d.filter is not None])
-        self.color_codes = [d.color_code for d in label_descriptors]
+        self.osm_lulc_mapping = dict([(d.name, d.osm_filter) for d in label_descriptors if d.filter is not None])
+        self.color_codes = [d.color for d in label_descriptors]
 
         self.item_cache = cache_dir / 'items' / area_descriptor_ver / label_descriptor_ver
         self.deterministic_tx = deterministic_tx
