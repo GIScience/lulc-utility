@@ -50,7 +50,7 @@ def calculate_dataset_statistics(cfg: DictConfig) -> None:
         rmtree(str(dataset.item_cache))
 
     loader = DataLoader(dataset,
-                        batch_size=cfg.model.batch_size,
+                        batch_size=1,
                         num_workers=cfg.model.workers,
                         persistent_workers=False,
                         collate_fn=center_crop_collate_fn(cfg.data.crop.height, cfg.data.crop.width))

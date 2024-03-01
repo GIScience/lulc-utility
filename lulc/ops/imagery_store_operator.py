@@ -2,10 +2,12 @@ import hashlib
 import io
 import logging
 import logging as rio_logging
+import shutil
 import uuid
 from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from tarfile import ReadError
 from typing import Dict, Tuple, List
 
 import ee
@@ -88,6 +90,12 @@ class SentinelHubOperator(ImageryStore):
         except DownloadFailedException:
             log.exception('Data download not possible')
             raise OperatorInteractionException('SentinelHub operator interaction not possible. Please contact platform administrator.')
+        except ReadError:
+            invalid_item = Path(request.get_filename_list()[0]).parent
+            log.warning(f'Cached TAR file read error (cache id: {invalid_item}) - dropping and retrying download')
+
+            shutil.rmtree(Path(request.data_folder) / invalid_item)
+            return request.get_data(save_data=True)[0], (bbox_height, bbox_width)
 
 
 class EarthEngineOperator(ImageryStore):

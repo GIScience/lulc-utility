@@ -2,9 +2,11 @@ import logging.config
 import os
 from pathlib import Path
 
+import contextily as cx
 import hydra
 import pandas as pd
 import yaml
+from matplotlib import pyplot as plt
 from omegaconf import DictConfig
 from tqdm import tqdm
 
@@ -26,19 +28,33 @@ def compute_area_descriptor(cfg: DictConfig) -> None:
     output_dir = Path(cfg.area.output_dir)
 
     dfs = []
-    for start_date, end_date in tqdm(cfg.area.timeframes, desc='Computing area descriptors'):
+    prog = tqdm(cfg.area.timeframes)
+    for i, (start_date, end_date) in enumerate(prog):
+        prog.set_description(f'Computing area descriptors ({start_date}-{end_date})')
         calculator = GridCalculator(nuts_source=cfg.area.nuts_source,
                                     nuts_id_col=cfg.area.nuts_id_col,
                                     split_mode=cfg.area.split_mode,
                                     start_date=start_date,
                                     end_date=end_date,
-                                    output_dir=output_dir,
                                     zoom_level=cfg.area.split_params.zoom_level,
-                                    bbox_size_m=cfg.area.split_params.bbox_size_m)
+                                    bbox_size_m=cfg.area.split_params.bbox_size_m,
+                                    sampling_frac=cfg.area.sampling_frac)
         df = calculator.split(target_nuts_ids=cfg.area.target_nuts_ids)
         dfs.append(df)
 
+        if i == len(prog) - 1:
+            prog.set_description('Computing area descriptors (completed)')
+
     df = pd.concat(dfs)
+
+    descriptor_png = output_dir / 'area_output.png'
+    log.info(f'Persisting descriptor visualization: {descriptor_png}')
+    ax = df.plot(figsize=(25, 25), alpha=0.1, edgecolor='black', lw=0.7)
+    plt.title(f'NUTS: {cfg.area.nuts_id_col}')
+    cx.add_basemap(ax, crs=df.crs, source=cx.providers.CartoDB.Positron)
+    plt.savefig(str(descriptor_png), bbox_inches='tight', pad_inches=0)
+    plt.close()
+
     descriptor_csv = str(output_dir / 'area_output.csv')
     df.to_csv(descriptor_csv, index=False)
 
