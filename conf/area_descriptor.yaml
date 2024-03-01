@@ -34,6 +34,9 @@ area:
   target_nuts_ids:
     - DE12
 
+  # Set the property to a value between 0-1 to enable random sampling (time frames scope)
+  sampling_frac:
+
   # Directory where the descriptor will be placed after calculation
   output_dir: ./data/area
 
