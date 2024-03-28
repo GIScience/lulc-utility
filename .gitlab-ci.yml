@@ -1,5 +1,7 @@
 unit_tests:
   stage: test
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
   image:
     name: condaforge/mambaforge:23.1.0-4
   variables:
@@ -7,7 +9,7 @@ unit_tests:
     PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
     PRE_COMMIT_HOME: "$CI_PROJECT_DIR/.cache/pre-commit"
   cache:
-    key: test-cache
+    key: $CI_COMMIT_REF_NAME
     paths:
       - $PRE_COMMIT_HOME
       - $CONDA_PKGS_DIRS/*.conda
@@ -15,33 +17,50 @@ unit_tests:
       - $CONDA_PKGS_DIRS/urls*
       - $CONDA_PKGS_DIRS/cache
       - $PIP_CACHE_DIR
-  script:
+  before_script:
     - mamba env create -f environment_cpu.yaml -v
     - mamba init bash
     - source ~/.bashrc
+  script:
     - conda run -n ca-lulc-utility-ci pre-commit run --all-files
     - conda run -n ca-lulc-utility-ci pytest -m "not external" --ignore=$CONDA_PKGS_DIRS .
 
-docker_build_deploy:
+docker_build_deploy_development:
   stage: deploy
-  only:
-    - main
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == 'push'
   image:
     name: gcr.io/kaniko-project/executor:v1.14.0-debug
-    entrypoint: [""]
-  script:
+    entrypoint: [ "" ]
+  before_script:
     - mkdir -p /kaniko/.docker
     - echo "{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"$(printf "%s:%s" "${CI_DOCKER_USER}" "${CI_DOCKER_TOKEN}" | base64 | tr -d '\n')\"}}}}" > /kaniko/.docker/config.json
+  script:
     - >
-      if [ -z ${CI_COMMIT_TAG+x} ]; then
-        /kaniko/executor \
+      /kaniko/executor \
           --context "${CI_PROJECT_DIR}" \
           --dockerfile "${CI_PROJECT_DIR}/Dockerfile" \
-          --destination "docker.io/heigit/ca-${CI_PROJECT_NAME}:devel"
-      else
-        /kaniko/executor \
-          --context "${CI_PROJECT_DIR}" \
-          --dockerfile "${CI_PROJECT_DIR}/Dockerfile" \
+          --cache \
+          --cache-repo "docker.io/heigit/ca-${CI_PROJECT_NAME}-cache" \
+          --cache-copy-layers \
           --destination "docker.io/heigit/ca-${CI_PROJECT_NAME}:devel" \
-          --destination "docker.io/heigit/ca-${CI_PROJECT_NAME}:${CI_COMMIT_TAG}"
-      fi
+          --destination "docker.io/heigit/ca-${CI_PROJECT_NAME}:staging" \
+          --cleanup
+
+docker_build_deploy_release:
+  stage: deploy
+  rules:
+    - if: $CI_COMMIT_TAG
+  image:
+    name: gcr.io/kaniko-project/executor:v1.14.0-debug
+    entrypoint: [ "" ]
+  before_script:
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"$(printf "%s:%s" "${CI_DOCKER_USER}" "${CI_DOCKER_TOKEN}" | base64 | tr -d '\n')\"}}}}" > /kaniko/.docker/config.json
+  script:
+    - >
+      /kaniko/executor \
+          --context "${CI_PROJECT_DIR}" \
+          --dockerfile "${CI_PROJECT_DIR}/Dockerfile" \
+          --destination "docker.io/heigit/ca-${CI_PROJECT_NAME}:${CI_COMMIT_TAG}" \
+          --cleanup
