@@ -11,6 +11,7 @@ dependencies:
   - geotiff=1.7.1
   - httpx=0.24.1
   - lightning=2.1.4
+  - mkl=2024.0.0
   - numpy=1.25.0
   - pandas=2.0.3
   - pillow=9.4.0
