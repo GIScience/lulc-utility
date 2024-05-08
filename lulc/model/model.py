@@ -128,7 +128,7 @@ class SegformerModule(pl.LightningModule):
 
         loss = F.cross_entropy(upsampled_logits, y,
                                ignore_index=self.configuration.semantic_loss_ignore_index,
-                               weight=self.class_weights,
+                               weight=self.class_weights.to(self.device),
                                label_smoothing=self.label_smoothing)
 
         y_pred = upsampled_logits.argmax(dim=1)
@@ -146,7 +146,7 @@ class SegformerModule(pl.LightningModule):
     def register_sample_image(self, x: torch.Tensor, y: torch.Tensor, y_pred: torch.Tensor, phase: str):
         def compute_image():
             image = torch.cat([y, y_pred], dim=2)
-            image = self.color_codes[image] / 255
+            image = self.color_codes.to(self.device)[image] / 255
             x_grid = self.image_grid(x)
             return torch.cat([x_grid, image], dim=2)
 
