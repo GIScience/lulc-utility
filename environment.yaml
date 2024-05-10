@@ -10,6 +10,7 @@ dependencies:
   - geos=3.11.1
   - geotiff=1.7.1
   - httpx=0.24.1
+  - mkl=2024.0.0
   - lightning=2.1.4
   - numpy=1.25.0
   - nvidia::cudatoolkit=11.7
