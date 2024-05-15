@@ -15,7 +15,7 @@ def test_ohsome_fetch():
 
         osm_lulc = {
             'urban': 'landuse=residential or landuse=industrial',
-            'forest': 'landuse=forest or natural=wood'
+            'forest': 'landuse=forest or natural=wood',
         }
 
         result = ops.labels(test_coords, '2020-06-30', osm_lulc, (300, 300))

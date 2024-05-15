@@ -5,13 +5,11 @@ import numpy as np
 
 
 class Tx(ABC):
-
     def __init__(self, subset='x'):
         self.subset = subset
 
 
 class Stack(Tx):
-
     def __init__(self, subset='x'):
         super().__init__(subset)
 
@@ -25,7 +23,6 @@ class Stack(Tx):
 
 
 class AdjustShape(Tx):
-
     def __init__(self, subset='x'):
         super().__init__(subset)
 
@@ -36,7 +33,6 @@ class AdjustShape(Tx):
 
 
 class ReclassifyMerge(Tx):
-
     def __init__(self, subset='y', method='denser_on_bottom'):
         super().__init__(subset)
 
@@ -65,7 +61,6 @@ class ReclassifyMerge(Tx):
 
 
 class NanToNum(Tx):
-
     def __init__(self, layers: List[str], subset='x', fill_value=0.0):
         super().__init__(subset)
         self.fill_value = fill_value
@@ -80,7 +75,6 @@ class NanToNum(Tx):
 
 
 class Normalize(Tx):
-
     def __init__(self, mean: List[float], std: List[float], subset='x'):
         super().__init__(subset)
         self.mean = mean

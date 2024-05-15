@@ -1,7 +1,7 @@
 import io
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Tuple, Dict
+from typing import Dict, Tuple
 
 import numpy as np
 import pytest
@@ -11,7 +11,7 @@ from tifffile import imread
 
 from app.api import app
 from lulc.data.label import LabelDescriptor, resolve_osm_labels
-from lulc.data.tx.array import Normalize, Stack, NanToNum, AdjustShape
+from lulc.data.tx.array import AdjustShape, NanToNum, Normalize, Stack
 from lulc.ops.imagery_store_operator import ImageryStore
 from lulc.ops.osm_operator import OhsomeOps
 
@@ -20,10 +20,10 @@ TEST_JSON_start_end = {
         7.3828125,
         47.5172006978394,
         7.55859375,
-        47.63578359086485
+        47.63578359086485,
     ],
     'start_date': '2023-05-01',
-    'end_date': '2023-06-01'
+    'end_date': '2023-06-01',
 }
 
 TEST_JSON_end_only = {
@@ -31,9 +31,9 @@ TEST_JSON_end_only = {
         7.3828125,
         47.5172006978394,
         7.55859375,
-        47.63578359086485
+        47.63578359086485,
     ],
-    'end_date': '2023-06-01'
+    'end_date': '2023-06-01',
 }
 
 TEST_JSON_no_time = {
@@ -41,7 +41,7 @@ TEST_JSON_no_time = {
         7.3828125,
         47.5172006978394,
         7.55859375,
-        47.63578359086485
+        47.63578359086485,
     ]
 }
 
@@ -50,9 +50,9 @@ TEST_JSON_favour_osm = {
         7.3828125,
         47.5172006978394,
         7.55859375,
-        47.63578359086485
+        47.63578359086485,
     ],
-    'fusion_mode': 'favour_osm'
+    'fusion_mode': 'favour_osm',
 }
 
 TEST_JSON_favour_model = {
@@ -60,9 +60,9 @@ TEST_JSON_favour_model = {
         7.3828125,
         47.5172006978394,
         7.55859375,
-        47.63578359086485
+        47.63578359086485,
     ],
-    'fusion_mode': 'favour_model'
+    'fusion_mode': 'favour_model',
 }
 
 TEST_JSON_mean_mixin = {
@@ -70,54 +70,108 @@ TEST_JSON_mean_mixin = {
         7.3828125,
         47.5172006978394,
         7.55859375,
-        47.63578359086485
+        47.63578359086485,
     ],
-    'fusion_mode': 'mean_mixin'
+    'fusion_mode': 'mean_mixin',
+}
+
+TEST_JSON_only_corine = {
+    'area_coords': [
+        7.3828125,
+        47.5172006978394,
+        7.55859375,
+        47.63578359086485,
+    ],
+    'fusion_mode': 'only_corine',
 }
 
 TODAY = datetime.now().date().isoformat()
 WEEK_BEFORE = (datetime.now() - timedelta(days=7)).date().isoformat()
 
 LABELS = [
-    LabelDescriptor(name='unknown',
-                    osm_filter='key=value',
-                    color=(0, 0, 0),
-                    description='description',
-                    raster_value=0),
-    LabelDescriptor(name='built-up',
-                    osm_filter='key=value',
-                    color=(255, 0, 0),
-                    description='description',
-                    raster_value=1),
-    LabelDescriptor(name='forest',
-                    osm_filter='key=value',
-                    color=(77, 200, 0),
-                    description='description',
-                    raster_value=2),
-    LabelDescriptor(name='water',
-                    osm_filter='key=value',
-                    color=(130, 200, 250),
-                    description='description',
-                    raster_value=3),
-    LabelDescriptor(name='agriculture',
-                    osm_filter='key=value',
-                    color=(255, 255, 80),
-                    description='description',
-                    raster_value=4)
+    LabelDescriptor(
+        name='unknown',
+        osm_filter='key=value',
+        color=(0, 0, 0),
+        description='description',
+        raster_value=0,
+    ),
+    LabelDescriptor(
+        name='built-up',
+        osm_filter='key=value',
+        color=(255, 0, 0),
+        description='description',
+        raster_value=1,
+    ),
+    LabelDescriptor(
+        name='forest',
+        osm_filter='key=value',
+        color=(77, 200, 0),
+        description='description',
+        raster_value=2,
+    ),
+    LabelDescriptor(
+        name='water',
+        osm_filter='key=value',
+        color=(130, 200, 250),
+        description='description',
+        raster_value=3,
+    ),
+    LabelDescriptor(
+        name='agriculture',
+        osm_filter='key=value',
+        color=(255, 255, 80),
+        description='description',
+        raster_value=4,
+    ),
+]
+
+LABELS_CORINE = [
+    LabelDescriptor(
+        id=1,
+        color=(230, 0, 77),
+        name='Continuous urban fabric',
+        raster_value=1,
+    ),
+    LabelDescriptor(
+        id=2,
+        color=(255, 0, 0),
+        name='Discontinuous urban fabric',
+        raster_value=2,
+    ),
+    LabelDescriptor(
+        id=3,
+        color=(204, 77, 242),
+        name='Industrial or commercial units',
+        raster_value=3,
+    ),
+    LabelDescriptor(
+        id=4,
+        color=(204, 0, 0),
+        name='Road and rail networks and associated land',
+        raster_value=4,
+    ),
+    LabelDescriptor(
+        id=5,
+        color=(230, 204, 204),
+        name='Port areas',
+        raster_value=5,
+    ),
 ]
 
 
 class TestImageryStore(ImageryStore):
-
     def __init__(self):
         self.last_start_date = None
         self.last_end_date = None
 
-    def imagery(self,
-                area_coords: Tuple,
-                start_date: str,
-                end_date: str,
-                resolution: int = 10) -> tuple[Dict[str, np.ndarray], tuple[int, int]]:
+    def imagery(
+        self,
+        area_coords: Tuple,
+        start_date: str,
+        end_date: str,
+        resolution: int = 10,
+    ) -> tuple[Dict[str, np.ndarray], tuple[int, int]]:
         self.last_start_date = start_date
         self.last_end_date = end_date
 
@@ -129,14 +183,16 @@ class TestImageryStore(ImageryStore):
 
 
 class TestOhsomeOps(OhsomeOps):
-
     def __init__(self):
         super().__init__(Path('/tmp'))
 
-    def labels(self, area_coords: Tuple[float, float, float, float],
-               time: str,
-               osm_lulc_mapping: Dict,
-               target_size: Tuple[int, int]) -> Dict[str, np.ndarray]:
+    def labels(
+        self,
+        area_coords: Tuple[float, float, float, float],
+        time: str,
+        osm_lulc_mapping: Dict,
+        target_size: Tuple[int, int],
+    ) -> Dict[str, np.ndarray]:
         output = {}
         for label in LABELS[1:]:
             output[label.name] = np.ones(target_size, dtype=np.int64)
@@ -151,6 +207,7 @@ def mocked_client():
     app.state.labels = LABELS
     app.state.osm = TestOhsomeOps()
     app.state.osm_lulc_mapping = resolve_osm_labels(app.state.labels)
+    app.state.corine_labels = LABELS_CORINE
     app.state.inference_session = InferenceSession(str(Path(__file__).parent / 'test.onnx'))
 
     def test_app_transformation_procedure(x):
@@ -171,12 +228,13 @@ def test_health(mocked_client):
 
 @pytest.mark.parametrize(
     'request_body, expected_start_date, expected_end_date',
-    [(TEST_JSON_start_end, '2023-05-01', '2023-06-01'),
-     (TEST_JSON_end_only, '2023-05-25', '2023-06-01'),
-     (TEST_JSON_no_time, WEEK_BEFORE, TODAY),
-     (TEST_JSON_favour_osm, WEEK_BEFORE, TODAY),
-     (TEST_JSON_favour_model, WEEK_BEFORE, TODAY)
-     ],
+    [
+        (TEST_JSON_start_end, '2023-05-01', '2023-06-01'),
+        (TEST_JSON_end_only, '2023-05-25', '2023-06-01'),
+        (TEST_JSON_no_time, WEEK_BEFORE, TODAY),
+        (TEST_JSON_favour_osm, WEEK_BEFORE, TODAY),
+        (TEST_JSON_favour_model, WEEK_BEFORE, TODAY),
+    ],
 )
 def test_segment_preview(mocked_client, request_body, expected_start_date, expected_end_date):
     response = mocked_client.post('/segment/preview', json=request_body)
@@ -197,28 +255,39 @@ def test_segment_image(mocked_client):
 def test_segment_describe(mocked_client):
     response = mocked_client.get('/segment/describe')
     assert response.json() == {
-        'unknown': {'name': 'unknown',
-                    'osm_filter': 'key=value',
-                    'color': [0, 0, 0],
-                    'description': 'description',
-                    'raster_value': 0, },
-        'built-up': {'name': 'built-up',
-                     'osm_filter': 'key=value',
-                     'color': [255, 0, 0],
-                     'description': 'description',
-                     'raster_value': 1, },
-        'forest': {'name': 'forest',
-                   'osm_filter': 'key=value',
-                   'color': [77, 200, 0],
-                   'description': 'description',
-                   'raster_value': 2, },
-        'water': {'name': 'water',
-                  'osm_filter': 'key=value',
-                  'color': [130, 200, 250],
-                  'description': 'description',
-                  'raster_value': 3, },
-        'agriculture': {'name': 'agriculture',
-                        'osm_filter': 'key=value',
-                        'color': [255, 255, 80],
-                        'description': 'description',
-                        'raster_value': 4, }}
+        'unknown': {
+            'name': 'unknown',
+            'osm_filter': 'key=value',
+            'color': [0, 0, 0],
+            'description': 'description',
+            'raster_value': 0,
+        },
+        'built-up': {
+            'name': 'built-up',
+            'osm_filter': 'key=value',
+            'color': [255, 0, 0],
+            'description': 'description',
+            'raster_value': 1,
+        },
+        'forest': {
+            'name': 'forest',
+            'osm_filter': 'key=value',
+            'color': [77, 200, 0],
+            'description': 'description',
+            'raster_value': 2,
+        },
+        'water': {
+            'name': 'water',
+            'osm_filter': 'key=value',
+            'color': [130, 200, 250],
+            'description': 'description',
+            'raster_value': 3,
+        },
+        'agriculture': {
+            'name': 'agriculture',
+            'osm_filter': 'key=value',
+            'color': [255, 255, 80],
+            'description': 'description',
+            'raster_value': 4,
+        },
+    }

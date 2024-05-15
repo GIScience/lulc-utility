@@ -1,6 +1,6 @@
 import logging
 import math
-from typing import List, Any, Tuple
+from typing import Any, List, Tuple
 
 import lightning.pytorch as pl
 import matplotlib.pyplot as plt
@@ -8,10 +8,9 @@ import torch
 import torch.nn.functional as F
 from neptune.types import File
 from torch.optim import Adam
-from torchmetrics import MeanMetric, JaccardIndex, Accuracy, F1Score, Precision, Recall
+from torchmetrics import Accuracy, F1Score, JaccardIndex, MeanMetric, Precision, Recall
 from torchvision.transforms import Resize
-from transformers import SegformerForSemanticSegmentation, \
-    SegformerConfig
+from transformers import SegformerConfig, SegformerForSemanticSegmentation
 
 from lulc.model.metrics import ConfusionMatrix2D, PlotMetric
 
@@ -19,66 +18,70 @@ MODEL_VARIANTS = {
     'MiT-b0': {
         'depths': [2, 2, 2, 2],
         'hidden_sizes': [32, 64, 160, 256],
-        'decoder_hidden_size': 256
+        'decoder_hidden_size': 256,
     },
     'MiT-b1': {
         'depths': [2, 2, 2, 2],
         'hidden_sizes': [64, 128, 320, 512],
-        'decoder_hidden_size': 256
+        'decoder_hidden_size': 256,
     },
     'MiT-b2': {
         'depths': [3, 4, 6, 3],
         'hidden_sizes': [64, 128, 320, 512],
-        'decoder_hidden_size': 768
+        'decoder_hidden_size': 768,
     },
     'MiT-b3': {
         'depths': [3, 4, 18, 3],
         'hidden_sizes': [64, 128, 320, 512],
-        'decoder_hidden_size': 768
+        'decoder_hidden_size': 768,
     },
     'MiT-b4': {
         'depths': [3, 8, 27, 3],
         'hidden_sizes': [64, 128, 320, 512],
-        'decoder_hidden_size': 768
+        'decoder_hidden_size': 768,
     },
     'MiT-b5': {
         'depths': [3, 6, 40, 3],
         'hidden_sizes': [64, 128, 320, 512],
-        'decoder_hidden_size': 768
-    }
+        'decoder_hidden_size': 768,
+    },
 }
 
 log = logging.getLogger(__name__)
 
 
 class SegformerModule(pl.LightningModule):
-
-    def __init__(self, num_channels: int,
-                 labels: List[str],
-                 variant: str,
-                 lr: float,
-                 device: torch.device,
-                 class_weights: List[float],
-                 color_codes: List[Tuple[int, int, int]],
-                 max_image_samples=5,
-                 temperature=1.0,
-                 label_smoothing=0.0,
-                 *args: Any,
-                 **kwargs: Any):
+    def __init__(
+        self,
+        num_channels: int,
+        labels: List[str],
+        variant: str,
+        lr: float,
+        device: torch.device,
+        class_weights: List[float],
+        color_codes: List[Tuple[int, int, int]],
+        max_image_samples=5,
+        temperature=1.0,
+        label_smoothing=0.0,
+        *args: Any,
+        **kwargs: Any,
+    ):
         super().__init__(*args, **kwargs)
         num_labels = len(labels)
         label2id = {k: v for v, k in enumerate(labels)}
         id2label = {v: k for k, v in label2id.items()}
 
         variant_config = MODEL_VARIANTS[variant]
-        self.configuration = SegformerConfig(num_channels=num_channels,
-                                             num_labels=num_labels,
-                                             id2label=id2label,
-                                             label2id=label2id,
-                                             semantic_loss_ignore_index=0,
-                                             depths=variant_config['depths'],
-                                             hidden_sizes=variant_config['hidden_sizes'],
-                                             decoder_hidden_size=variant_config['decoder_hidden_size'])
+        self.configuration = SegformerConfig(
+            num_channels=num_channels,
+            num_labels=num_labels,
+            id2label=id2label,
+            label2id=label2id,
+            semantic_loss_ignore_index=0,
+            depths=variant_config['depths'],
+            hidden_sizes=variant_config['hidden_sizes'],
+            decoder_hidden_size=variant_config['decoder_hidden_size'],
+        )
 
         self.class_weights = torch.tensor(class_weights).to(device)
         self.color_codes = torch.tensor(color_codes).to(device)
@@ -99,8 +102,9 @@ class SegformerModule(pl.LightningModule):
                 'f1': F1Score(task='multiclass', num_classes=num_labels),
                 'precision': Precision(task='multiclass', num_classes=num_labels),
                 'recall': Recall(task='multiclass', num_classes=num_labels),
-                'confusion_matrix': ConfusionMatrix2D(task='multiclass', num_classes=num_labels, normalize='true',
-                                                      labels=labels)
+                'confusion_matrix': ConfusionMatrix2D(
+                    task='multiclass', num_classes=num_labels, normalize='true', labels=labels
+                ),
             }
 
     def on_fit_start(self) -> None:
@@ -126,10 +130,13 @@ class SegformerModule(pl.LightningModule):
         logits = self.model(x).logits / self.temperature
         upsampled_logits = F.interpolate(logits, size=y.shape[-2:], mode='bilinear', align_corners=False)
 
-        loss = F.cross_entropy(upsampled_logits, y,
-                               ignore_index=self.configuration.semantic_loss_ignore_index,
-                               weight=self.class_weights.to(self.device),
-                               label_smoothing=self.label_smoothing)
+        loss = F.cross_entropy(
+            upsampled_logits,
+            y,
+            ignore_index=self.configuration.semantic_loss_ignore_index,
+            weight=self.class_weights.to(self.device),
+            label_smoothing=self.label_smoothing,
+        )
 
         y_pred = upsampled_logits.argmax(dim=1)
 
@@ -151,7 +158,7 @@ class SegformerModule(pl.LightningModule):
             return torch.cat([x_grid, image], dim=2)
 
         if phase in self.images and self.images[phase].shape[0] < self.max_image_samples:
-            self.images[phase] = torch.cat([self.images[phase], compute_image()])[:self.max_image_samples]
+            self.images[phase] = torch.cat([self.images[phase], compute_image()])[: self.max_image_samples]
         elif phase not in self.images:
             self.images[phase] = compute_image()
 

@@ -12,17 +12,20 @@ test_data_random = {
         'forest': np.random.randint(0, 2, (256, 256)),
         'water': np.zeros((256, 256), dtype=np.int8),
         'urban': np.random.randint(0, 2, (256, 256)),
-        'built-up': np.random.randint(0, 2, (256, 256))
-    }
+        'built-up': np.random.randint(0, 2, (256, 256)),
+    },
 }
 
 test_data_deterministic_x = {
-    'x': np.concatenate([
-        np.full((256, 256, 1), 0.5, dtype=np.float32),
-        np.full((256, 256, 1), 10, dtype=np.float32),
-        np.full((256, 256, 1), 200, dtype=np.float32)
-    ], axis=-1),
-    'y': np.random.randint(0, 5, (256, 256))
+    'x': np.concatenate(
+        [
+            np.full((256, 256, 1), 0.5, dtype=np.float32),
+            np.full((256, 256, 1), 10, dtype=np.float32),
+            np.full((256, 256, 1), 200, dtype=np.float32),
+        ],
+        axis=-1,
+    ),
+    'y': np.random.randint(0, 5, (256, 256)),
 }
 
 

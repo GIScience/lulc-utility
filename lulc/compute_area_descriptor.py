@@ -31,14 +31,16 @@ def compute_area_descriptor(cfg: DictConfig) -> None:
     prog = tqdm(cfg.area.timeframes)
     for i, (start_date, end_date) in enumerate(prog):
         prog.set_description(f'Computing area descriptors ({start_date}-{end_date})')
-        calculator = GridCalculator(nuts_source=cfg.area.nuts_source,
-                                    nuts_id_col=cfg.area.nuts_id_col,
-                                    split_mode=cfg.area.split_mode,
-                                    start_date=start_date,
-                                    end_date=end_date,
-                                    zoom_level=cfg.area.split_params.zoom_level,
-                                    bbox_size_m=cfg.area.split_params.bbox_size_m,
-                                    sampling_frac=cfg.area.sampling_frac)
+        calculator = GridCalculator(
+            nuts_source=cfg.area.nuts_source,
+            nuts_id_col=cfg.area.nuts_id_col,
+            split_mode=cfg.area.split_mode,
+            start_date=start_date,
+            end_date=end_date,
+            zoom_level=cfg.area.split_params.zoom_level,
+            bbox_size_m=cfg.area.split_params.bbox_size_m,
+            sampling_frac=cfg.area.sampling_frac,
+        )
         df = calculator.split(target_nuts_ids=cfg.area.target_nuts_ids)
         dfs.append(df)
 

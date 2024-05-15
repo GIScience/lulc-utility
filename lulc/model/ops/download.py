@@ -42,8 +42,16 @@ class NeptuneModelDownload:
         return model_file, label_descriptor_version
 
     def __fetch_latest_by_state(self, state='production'):
-        project_id = neptune.init_project(project=self.__project, api_token=self.__api_token, mode='read-only')['sys/id'].fetch()
-        model = neptune.init_model(with_id=f'{project_id}-{self.__model_key}', project=self.__project, api_token=self.__api_token)
+        project_id = neptune.init_project(
+            project=self.__project,
+            api_token=self.__api_token,
+            mode='read-only',
+        )['sys/id'].fetch()
+        model = neptune.init_model(
+            with_id=f'{project_id}-{self.__model_key}',
+            project=self.__project,
+            api_token=self.__api_token,
+        )
         model_versions_df = model.fetch_model_versions_table().to_pandas()
         production_models = model_versions_df[model_versions_df['sys/stage'] == state]
 

@@ -12,3 +12,18 @@ evalscript_dir: data/imagery
 
 # Image acquisition and preprocessing descriptor name.
 evalscript_name: imagery_v1
+
+# Corine API ID
+cor_api_id: byoc-cbdba844-f86d-41dc-95ad-b3f7f12535e9
+
+# Corine Catalog ID
+catalog_id: cbdba844-f86d-41dc-95ad-b3f7f12535e9
+
+# Corine Service URL
+service_url: https://creodias.sentinel-hub.com
+
+# Corine Image acquisition and preprocessing descriptor name.
+evalscript_name_cor: imagery_corine_v1
+
+# List of valid Corine years
+corine_years: [1990, 2000, 2006, 2012, 2018]

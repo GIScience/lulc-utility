@@ -2,16 +2,16 @@ import numpy as np
 import pytest
 import torch
 
-from lulc.data.tx.tensor import ToTensor, RandomCrop, CenterCrop
+from lulc.data.tx.tensor import CenterCrop, RandomCrop, ToTensor
 
 test_data_channel_last = {
     'x': np.random.uniform(0, 255, (256, 256, 9)),
-    'y': np.random.randint(0, 5, (256, 256))
+    'y': np.random.randint(0, 5, (256, 256)),
 }
 
 test_data_channel_first = {
     'x': torch.randint(0, 255, (9, 256, 256), dtype=torch.float32),
-    'y': torch.randint(0, 5, (256, 256))
+    'y': torch.randint(0, 5, (256, 256)),
 }
 
 

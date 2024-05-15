@@ -14,9 +14,17 @@ log = logging.getLogger(__name__)
 
 
 class GridCalculator:
-
-    def __init__(self, nuts_source: str, nuts_id_col: str, split_mode: str, start_date: str, end_date: str,
-                 zoom_level: int, bbox_size_m: Tuple[int, int], sampling_frac: Optional[float] = None):
+    def __init__(
+        self,
+        nuts_source: str,
+        nuts_id_col: str,
+        split_mode: str,
+        start_date: str,
+        end_date: str,
+        zoom_level: int,
+        bbox_size_m: Tuple[int, int],
+        sampling_frac: Optional[float] = None,
+    ):
         self.gdf = gpd.read_file(nuts_source)
         self.nuts_id_col = nuts_id_col
         self.start_date = start_date
