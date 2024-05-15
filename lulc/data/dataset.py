@@ -14,15 +14,16 @@ from lulc.ops.osm_operator import OhsomeOps
 
 
 class AreaDataset(Dataset):
-
-    def __init__(self, area_descriptor_ver: str,
-                 label_descriptor_ver: str,
-                 imagery_store: ImageryStore,
-                 data_dir: Path,
-                 cache_dir: Path,
-                 deterministic_tx: transforms.Compose,
-                 random_tx: Optional[transforms.Compose] = None
-                 ):
+    def __init__(
+        self,
+        area_descriptor_ver: str,
+        label_descriptor_ver: str,
+        imagery_store: ImageryStore,
+        data_dir: Path,
+        cache_dir: Path,
+        deterministic_tx: transforms.Compose,
+        random_tx: Optional[transforms.Compose] = None,
+    ):
         self.osm = OhsomeOps(cache_dir=cache_dir / 'osm' / label_descriptor_ver)
         self.imagery_store = imagery_store
 
@@ -51,19 +52,13 @@ class AreaDataset(Dataset):
             imagery, imagery_size = self.imagery_store.imagery(area_coords, area['start_date'], area['end_date'])
             labels = self.osm.labels(area_coords, area['end_date'], self.osm_lulc_mapping, imagery_size)
 
-            item = self.deterministic_tx({
-                'x': imagery,
-                'y': labels
-            })
+            item = self.deterministic_tx({'x': imagery, 'y': labels})
 
             item_path.mkdir(parents=True, exist_ok=True)
             torch.save(item['x'], x_path)
             torch.save(item['y'], y_path)
         else:
-            item = {
-                'x': torch.load(x_path),
-                'y': torch.load(y_path)
-            }
+            item = {'x': torch.load(x_path), 'y': torch.load(y_path)}
 
         item = item if self.random_tx is None else self.random_tx(item)
         return ToTensor()(item)

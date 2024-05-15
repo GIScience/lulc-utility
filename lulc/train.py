@@ -47,7 +47,7 @@ def train(cfg: DictConfig) -> None:
         api_key=cfg.neptune.api_token,
         log_model_checkpoints=False,
         mode=cfg.neptune.mode,
-        prefix=''
+        prefix='',
     )
     neptune_logger.log_hyperparams(params=cfg.model)
     neptune_logger.experiment['data/area'] = cfg.data.descriptor.area
@@ -58,7 +58,6 @@ def train(cfg: DictConfig) -> None:
     imagery_store = resolve_imagery_store(cfg.imagery, cache_dir=Path(cfg.cache.dir))
 
     with EnergyContext(neptune_logger.experiment, enable_tracking=cfg.environment.energy_tracker) as energy_context:
-
         log.info(f'Initializing dataset (area: {cfg.data.descriptor.area}, label: {cfg.data.descriptor.labels})')
 
         dataset = AreaDataset(
@@ -67,26 +66,30 @@ def train(cfg: DictConfig) -> None:
             imagery_store=imagery_store,
             data_dir=Path(cfg.data.dir),
             cache_dir=Path(cfg.cache.dir),
-            deterministic_tx=transforms.Compose([
-                NanToNum(layers=['s1.tif', 's2.tif']),
-                Stack(),
-                ReclassifyMerge(),
-                Normalize(mean=cfg.data.normalize.mean, std=cfg.data.normalize.std)
-            ])
+            deterministic_tx=transforms.Compose(
+                [
+                    NanToNum(layers=['s1.tif', 's2.tif']),
+                    Stack(),
+                    ReclassifyMerge(),
+                    Normalize(mean=cfg.data.normalize.mean, std=cfg.data.normalize.std),
+                ]
+            ),
         )
 
         if dataset.item_cache.exists():
             log.info('Refreshing item intermediate cache (if exists)')
             rmtree(str(dataset.item_cache))
 
-        datamodule = AreaDataModule(dataset=dataset,
-                                    batch_size=cfg.model.batch_size,
-                                    num_workers=cfg.model.workers,
-                                    crop_height=cfg.data.crop.height,
-                                    crop_width=cfg.data.crop.width,
-                                    train_frac=cfg.data.train_frac,
-                                    test_frac=cfg.data.test_frac,
-                                    augment=OmegaConf.to_container(cfg.model.augment, resolve=True))
+        datamodule = AreaDataModule(
+            dataset=dataset,
+            batch_size=cfg.model.batch_size,
+            num_workers=cfg.model.workers,
+            crop_height=cfg.data.crop.height,
+            crop_width=cfg.data.crop.width,
+            train_frac=cfg.data.train_frac,
+            test_frac=cfg.data.test_frac,
+            augment=OmegaConf.to_container(cfg.model.augment, resolve=True),
+        )
 
         log.info(f'Creating a model ({cfg.model.variant})')
         params = dict(
@@ -99,7 +102,7 @@ def train(cfg: DictConfig) -> None:
             color_codes=dataset.color_codes,
             max_image_samples=cfg.model.max_image_samples,
             temperature=cfg.model.temperature,
-            label_smoothing=cfg.model.label_smoothing
+            label_smoothing=cfg.model.label_smoothing,
         )
         model = SegformerModule(**params)
 
@@ -109,20 +112,20 @@ def train(cfg: DictConfig) -> None:
         early_stopping = EarlyStopping(monitor='val/epoch/loss', patience=cfg.model.early_stopping.patience)
         model_checkpoint = ModelCheckpoint(dirpath=f'{output_dir}/checkpoints', save_top_k=2, monitor='val/epoch/loss')
 
-        trainer = pl.Trainer(logger=neptune_logger,
-                             max_epochs=cfg.model.max_epochs,
-                             callbacks=[early_stopping, model_checkpoint],
-                             log_every_n_steps=cfg.model.log_every_n_steps,
-                             gradient_clip_val=cfg.model.gradient_clip_val,
-                             deterministic=cfg.environment.deterministic,
-                             profiler=cfg.environment.profiler)
+        trainer = pl.Trainer(
+            logger=neptune_logger,
+            max_epochs=cfg.model.max_epochs,
+            callbacks=[early_stopping, model_checkpoint],
+            log_every_n_steps=cfg.model.log_every_n_steps,
+            gradient_clip_val=cfg.model.gradient_clip_val,
+            deterministic=cfg.environment.deterministic,
+            profiler=cfg.environment.profiler,
+        )
 
         if cfg.model.enable_tuning:
             tuner = Tuner(trainer)
             tuner.lr_find(model, datamodule=datamodule)
-            tuner.scale_batch_size(model, mode='binsearch',
-                                   datamodule=datamodule,
-                                   init_val=cfg.model.batch_size)
+            tuner.scale_batch_size(model, mode='binsearch', datamodule=datamodule, init_val=cfg.model.batch_size)
 
         trainer.fit(model=model, datamodule=datamodule)
 
@@ -134,15 +137,19 @@ def train(cfg: DictConfig) -> None:
         trainer.test(model=model, datamodule=datamodule)
 
         log.info(f'Model training completed: {run_name}')
-        registry = NeptuneModelRegistry(model_key=cfg.neptune.model.key,
-                                        project=cfg.neptune.project,
-                                        api_key=cfg.neptune.api_token,
-                                        cache_dir=Path(cfg.cache.dir))
+        registry = NeptuneModelRegistry(
+            model_key=cfg.neptune.model.key,
+            project=cfg.neptune.project,
+            api_key=cfg.neptune.api_token,
+            cache_dir=Path(cfg.cache.dir),
+        )
         energy_context.record('register')
-        registry.register_version(model=model,
-                                  run_name=run_name,
-                                  run_url=neptune_logger.experiment.get_url(),
-                                  label_descriptor_version=cfg.data.descriptor.labels)
+        registry.register_version(
+            model=model,
+            run_name=run_name,
+            run_url=neptune_logger.experiment.get_url(),
+            label_descriptor_version=cfg.data.descriptor.labels,
+        )
 
 
 if __name__ == '__main__':

@@ -29,7 +29,7 @@ class NeptuneModelRegistry:
                 name='Climate Action - LULC - SegFormer',
                 project=self.__project,
                 api_token=self.__api_token,
-                key=self.__model_key
+                key=self.__model_key,
             ).sync()
         except NeptuneModelKeyAlreadyExistsError:
             log.info(f'Model {self.__model_key} already exists in Neptune.ai')
@@ -37,13 +37,17 @@ class NeptuneModelRegistry:
         model_path = f'{self.__cache_dir}/{run_name}.onnx'
         log.info(f'Persisting temporary onnx model file in: {model_path}')
 
-        model.to_onnx(model_path,
-                      input_sample=torch.zeros((1, model.configuration.num_channels, 1024, 1024)),
-                      dynamic_axes={'imagery': [2, 3], 'labels': [1, 2]},
-                      input_names=['imagery'],
-                      output_names=['labels'])
+        model.to_onnx(
+            model_path,
+            input_sample=torch.zeros((1, model.configuration.num_channels, 1024, 1024)),
+            dynamic_axes={'imagery': [2, 3], 'labels': [1, 2]},
+            input_names=['imagery'],
+            output_names=['labels'],
+        )
 
-        project_id = neptune.init_project(project=self.__project, api_token=self.__api_token, mode='read-only')['sys/id'].fetch()
+        project_id = neptune.init_project(project=self.__project, api_token=self.__api_token, mode='read-only')[
+            'sys/id'
+        ].fetch()
         neptune_model = f'{project_id}-{self.__model_key}'
         log.info(f'Registering model version: {neptune_model}')
         model_version = neptune.init_model_version(

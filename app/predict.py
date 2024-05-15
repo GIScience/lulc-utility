@@ -1,5 +1,6 @@
 import logging
 from enum import Enum
+from datetime import datetime
 from functools import lru_cache
 from typing import Tuple, Callable
 
@@ -23,18 +24,22 @@ class FusionMode(Enum):
     FAVOUR_OSM = 'favour_osm'
     FAVOUR_MODEL = 'favour_model'
     MEAN_MIXIN = 'mean_mixin'
+    ONLY_CORINE = 'only_corine'
 
 
 @lru_cache(maxsize=32)
-def predict(imagery_store: ImageryStore,
-            osm: OhsomeOps,
-            inference_session: InferenceSession,
-            tx: Callable,
-            osm_lulc_mapping: dict,
-            threshold: float,
-            area_coords: Tuple[float, float, float, float],
-            start_date: str, end_date: str,
-            fusion_mode: FusionMode):
+def predict(
+    imagery_store: ImageryStore,
+    osm: OhsomeOps,
+    inference_session: InferenceSession,
+    tx: Callable,
+    osm_lulc_mapping: dict,
+    threshold: float,
+    area_coords: Tuple[float, float, float, float],
+    start_date: str,
+    end_date: str,
+    fusion_mode: FusionMode,
+):
     """
     Run the model inference pipeline:
     - call the external remote sensing imagery store to acquire preprocessed data,
@@ -56,25 +61,35 @@ def predict(imagery_store: ImageryStore,
     log.debug('Running model inference pipeline')
 
     try:
-        imagery, imager_size = imagery_store.imagery(area_coords, start_date, end_date)
-        imagery = tx({'imagery': imagery})
-        logits = inference_session.run(output_names=None, input_feed=imagery)[0][0]
-        labels = __fusion(osm, osm_lulc_mapping, threshold, area_coords, end_date, fusion_mode, logits)
-        log.debug('Model inference pipeline completed')
-        return labels, imager_size
+        if fusion_mode == FusionMode.ONLY_CORINE:
+            end_date_dt = datetime.strptime(end_date, '%Y-%m-%d')
+            if end_date_dt.year >= 1990:
+                labels, imager_size = imagery_store.labels(area_coords, start_date, end_date)
+                return labels, imager_size
+            else:
+                raise HTTPException(status_code=400, detail='CORINE data is not available before 1990')
+        else:
+            imagery, imager_size = imagery_store.imagery(area_coords, start_date, end_date)
+            imagery = tx({'imagery': imagery})
+            logits = inference_session.run(output_names=None, input_feed=imagery)[0][0]
+            labels = __fusion(osm, osm_lulc_mapping, threshold, area_coords, end_date, fusion_mode, logits)
+            log.debug('Model inference pipeline completed')
+            return labels, imager_size
     except OperatorValidationException as e:
         raise HTTPException(status_code=400, detail=str(e))
     except OperatorInteractionException as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-def __fusion(osm: OhsomeOps,
-             osm_lulc_mapping: dict,
-             threshold: float,
-             area_coords: Tuple[float, float, float, float],
-             date: str,
-             fusion_mode: FusionMode,
-             logits: np.ndarray):
+def __fusion(
+    osm: OhsomeOps,
+    osm_lulc_mapping: dict,
+    threshold: float,
+    area_coords: Tuple[float, float, float, float],
+    date: str,
+    fusion_mode: FusionMode,
+    logits: np.ndarray,
+):
     log.debug(f'Fusing predictions in {fusion_mode} mode')
     pred = softmax(logits, axis=0)
 

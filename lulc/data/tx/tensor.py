@@ -4,9 +4,7 @@ from torchvision import transforms
 
 
 class ToTensor:
-
     def __call__(self, sample):
-
         for subset_name, subset in sample.items():
             tensor = torch.from_numpy(subset)
             if len(tensor.shape) == 3:
@@ -20,7 +18,6 @@ class ToTensor:
 
 
 class ToNumpy:
-
     def __call__(self, sample):
         for subset_name, subset in sample.items():
             sample[subset_name] = subset.numpy()
@@ -29,7 +26,6 @@ class ToNumpy:
 
 
 class RandomCrop:
-
     def __init__(self, out_height=256, out_width=256):
         self.output_size = (out_height, out_width)
 
@@ -37,14 +33,10 @@ class RandomCrop:
         x = sample['x']
         y = sample['y']
         i, j, h, w = transforms.RandomCrop.get_params(x, output_size=self.output_size)
-        return {
-            'x': F.crop(x, i, j, h, w),
-            'y': F.crop(y, i, j, h, w)
-        }
+        return {'x': F.crop(x, i, j, h, w), 'y': F.crop(y, i, j, h, w)}
 
 
 class CenterCrop:
-
     def __init__(self, out_height=256, out_width=256):
         self.output_size = [out_height, out_width]
 
@@ -53,5 +45,5 @@ class CenterCrop:
         y = sample['y']
         return {
             'x': F.center_crop(x, self.output_size),
-            'y': F.center_crop(y, self.output_size)
+            'y': F.center_crop(y, self.output_size),
         }

@@ -3,7 +3,7 @@ import uuid
 from functools import partial
 from multiprocessing.pool import ThreadPool
 from pathlib import Path
-from typing import Tuple, Dict
+from typing import Dict, Tuple
 
 import geopandas as gpd
 import numpy as np
@@ -19,18 +19,20 @@ from rasterio.enums import Resampling
 
 
 class OhsomeOps:
-
-    def __init__(self, cache_dir: Path, resolution=(-.0001, .0001)):
+    def __init__(self, cache_dir: Path, resolution=(-0.0001, 0.0001)):
         self.cache_dir: Path = cache_dir
         self.resolution = resolution
 
         log_dir = HydraConfig.get().runtime.output_dir if HydraConfig.initialized() else None
         self.ohsome = OhsomeClient(user_agent='ClimateAction/LULC', log_dir=log_dir, log=HydraConfig.initialized())
 
-    def labels(self, area_coords: Tuple[float, float, float, float],
-               time: str,
-               osm_lulc_mapping: Dict,
-               target_size: Tuple[int, int]) -> Dict[str, np.ndarray]:
+    def labels(
+        self,
+        area_coords: Tuple[float, float, float, float],
+        time: str,
+        osm_lulc_mapping: Dict,
+        target_size: Tuple[int, int],
+    ) -> Dict[str, np.ndarray]:
         result = {}
         height, width = target_size
         bbox = ','.join(map(str, area_coords))
@@ -44,14 +46,16 @@ class OhsomeOps:
 
         return result
 
-    def __compute_label_mask(self,
-                             bbox: Tuple[float, float, float, float],
-                             bbox_id: uuid.UUID,
-                             time: str,
-                             utm: str,
-                             height: int,
-                             width: int,
-                             osm_lulc_mapping: Tuple[str, str]) -> Tuple[str, np.ndarray]:
+    def __compute_label_mask(
+        self,
+        bbox: Tuple[float, float, float, float],
+        bbox_id: uuid.UUID,
+        time: str,
+        utm: str,
+        height: int,
+        width: int,
+        osm_lulc_mapping: Tuple[str, str],
+    ) -> Tuple[str, np.ndarray]:
         label, osm_filter = osm_lulc_mapping
         data_folder = self.cache_dir / label
         data_folder.mkdir(parents=True, exist_ok=True)
@@ -61,11 +65,15 @@ class OhsomeOps:
             vector_data = self.ohsome.elements.geometry.post(
                 bboxes=bbox,
                 time=time,
-                filter=f'({osm_filter}) and geometry:polygon'
+                filter=f'({osm_filter}) and geometry:polygon',
             ).as_dataframe()
-            extent_data = gpd.GeoDataFrame(index=['extent'],
-                                           crs='epsg:4326',
-                                           geometry=[shapely.geometry.box(*bbox, ccw=True)])
+            extent_data = gpd.GeoDataFrame(
+                index=['extent'],
+                crs='epsg:4326',
+                geometry=[
+                    shapely.geometry.box(*bbox, ccw=True),
+                ],
+            )
 
             vector_data['value'] = 1
             extent_data['value'] = 0
@@ -93,7 +101,7 @@ class OhsomeOps:
             measurements=['value'],
             resolution=self.resolution,
             output_crs='EPSG:4326',
-            fill=0
+            fill=0,
         ).astype(np.uint8)
 
     @staticmethod

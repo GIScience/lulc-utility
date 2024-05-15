@@ -10,7 +10,6 @@ log = logging.getLogger(__name__)
 
 
 class EnergyContext:
-
     def __init__(self, experiment: Run, init_tag='init', enable_tracking=False):
         self.experiment = experiment
         self.init_tag = init_tag
