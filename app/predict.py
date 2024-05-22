@@ -71,8 +71,10 @@ def predict(
         else:
             imagery, imager_size = imagery_store.imagery(area_coords, start_date, end_date)
             imagery = tx({'imagery': imagery})
+
             logits = inference_session.run(output_names=None, input_feed=imagery)[0][0]
             labels = __fusion(osm, osm_lulc_mapping, threshold, area_coords, end_date, fusion_mode, logits)
+
             log.debug('Model inference pipeline completed')
             return labels, imager_size
     except OperatorValidationException as e:

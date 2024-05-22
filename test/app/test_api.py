@@ -209,6 +209,7 @@ def mocked_client():
     app.state.osm_lulc_mapping = resolve_osm_labels(app.state.labels)
     app.state.corine_labels = LABELS_CORINE
     app.state.inference_session = InferenceSession(str(Path(__file__).parent / 'test.onnx'))
+    app.state.edge_smoothing_buffer = 200
 
     def test_app_transformation_procedure(x):
         x = NanToNum(layers=['s1.tif', 's2.tif'], subset='imagery')(x)
@@ -249,7 +250,7 @@ def test_segment_image(mocked_client):
     response_data = imread(io.BytesIO(response.content))
     assert response.status_code == 200
     assert response.headers['content-type'] == 'image/geotiff'
-    assert response_data.shape == (512, 768)
+    assert response_data.shape == (498, 746)
 
 
 def test_segment_describe(mocked_client):

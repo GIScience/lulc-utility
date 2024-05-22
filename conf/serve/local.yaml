@@ -14,3 +14,7 @@ predict_cache_size: 256
 
 # Version of the app REST API
 api_version: v1
+
+# Distance in meters used to increase the processed AOI before inputting it to the inference process
+# Used to overcome models' edge prediction issues.
+edge_smoothing_buffer: 200
