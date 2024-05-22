@@ -3,6 +3,7 @@ import logging.config
 import os
 import uuid
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Dict, Optional, Tuple
@@ -12,12 +13,15 @@ import numpy as np
 import rasterio
 import uvicorn
 import yaml
+from PIL import Image
 from fastapi import APIRouter, FastAPI
 from hydra import compose
 from onnxruntime import InferenceSession
-from PIL import Image
 from pydantic import BaseModel, Field, confloat, model_validator
 from rasterio.crs import CRS
+from rasterio.mask import mask
+from sentinelhub import BBox, CRS as SCRS, to_utm_bbox
+from shapely import Polygon
 from starlette.background import BackgroundTask
 from starlette.requests import Request
 from starlette.responses import FileResponse, Response
@@ -48,6 +52,15 @@ class ImageResponse(Response):
 
 class GeoTiffResponse(FileResponse):
     media_type = 'image/geotiff'
+
+
+@dataclass
+class PredictionResult:
+    labels: np.ndarray
+    height: int
+    width: int
+    area_coords: Tuple[float, float, float, float]
+    clip_geometry: Polygon
 
 
 @asynccontextmanager
@@ -88,6 +101,7 @@ async def configure_dependencies(app: FastAPI):
         return AdjustShape(subset='imagery')(x)
 
     app.state.tx = tx
+    app.state.edge_smoothing_buffer = cfg.serve.edge_smoothing_buffer
 
     log.info('Initialisation completed')
 
@@ -174,26 +188,10 @@ def is_ok() -> HealthCheck:
 )
 def segment_preview(body: LulcWorkUnit, request: Request) -> ImageResponse:
     log.info(f'Creating preview for {body}')
+    result = __predict(body, request)
 
-    labels, _ = predict(
-        request.app.state.imagery_store,
-        request.app.state.osm,
-        request.app.state.inference_session,
-        request.app.state.tx,
-        request.app.state.osm_lulc_mapping,
-        body.threshold,
-        body.area_coords,
-        body.start_date.isoformat(),
-        body.end_date.isoformat(),
-        body.fusion_mode,
-    )
-
-    if body.fusion_mode == FusionMode.ONLY_CORINE:
-        labels = np.array([d.color for d in request.app.state.corine_labels], dtype=np.uint8)[labels]
-
-    else:
-        labels = np.array([d.color for d in request.app.state.labels], dtype=np.uint8)[labels]
-
+    labels = request.app.state.corine_labels if body.fusion_mode == FusionMode.ONLY_CORINE else request.app.state.labels
+    labels = np.array([d.color for d in labels], dtype=np.uint8)[result.labels]
     labels = Image.fromarray(labels)
 
     buf = io.BytesIO()
@@ -201,7 +199,6 @@ def segment_preview(body: LulcWorkUnit, request: Request) -> ImageResponse:
     buf.seek(0)
 
     log.info(f'Finished creating preview for {body}')
-
     return ImageResponse(buf.getvalue(), media_type='image/png')
 
 
@@ -211,7 +208,58 @@ def segment_preview(body: LulcWorkUnit, request: Request) -> ImageResponse:
     response_class=GeoTiffResponse,
 )
 def segment_compute(body: LulcWorkUnit, request: Request) -> GeoTiffResponse:
-    log.info(f'Creating segementation for {body}')
+    log.info(f'Creating segmentation for {body}')
+    result = __predict(body, request)
+
+    file_path = Path(f'/tmp/{uuid.uuid4()}.tiff')
+
+    def unlink():
+        file_path.unlink()
+
+    with rasterio.open(
+        file_path,
+        mode='w+',
+        driver='GTiff',
+        height=result.height,
+        width=result.width,
+        count=1,
+        dtype=result.labels.dtype,
+        crs=CRS.from_string('EPSG:4326'),
+        nodata=None,
+        transform=rasterio.transform.from_bounds(*result.area_coords, width=result.width, height=result.height),
+    ) as dst:
+        dst.write(result.labels, 1)
+
+        masked_image, out_transform = mask(dst, shapes=[result.clip_geometry], crop=True)
+        out_profile = dst.profile.copy()
+
+    out_profile.update(
+        {'driver': 'GTiff', 'height': masked_image.shape[1], 'width': masked_image.shape[2], 'transform': out_transform}
+    )
+
+    with rasterio.open(file_path, 'w', **out_profile) as dst:
+        dst.write(masked_image)
+        colors = (
+            request.app.state.corine_labels if body.fusion_mode == FusionMode.ONLY_CORINE else request.app.state.labels
+        )
+        dst.write_colormap(1, dict(enumerate([d.color for d in colors])))
+
+    log.info(f'Finished creating segmentation for {body}')
+    return GeoTiffResponse(
+        file_path,
+        media_type='image/geotiff',
+        filename='segmentation.tiff',
+        background=BackgroundTask(unlink),
+    )
+
+
+def __predict(body: LulcWorkUnit, request: Request) -> PredictionResult:
+    bbox = BBox(bbox=body.area_coords, crs=SCRS.WGS84)
+    buffered_bbox = (
+        to_utm_bbox(bbox).buffer(request.app.state.edge_smoothing_buffer, relative=False).transform(crs=SCRS.WGS84)
+    )
+
+    buffered_bbox_coords = buffered_bbox.lower_left + buffered_bbox.upper_right
 
     labels, (h, w) = predict(
         request.app.state.imagery_store,
@@ -220,44 +268,13 @@ def segment_compute(body: LulcWorkUnit, request: Request) -> GeoTiffResponse:
         request.app.state.tx,
         request.app.state.osm_lulc_mapping,
         body.threshold,
-        body.area_coords,
+        buffered_bbox_coords,
         body.start_date.isoformat(),
         body.end_date.isoformat(),
         body.fusion_mode,
     )
 
-    transform = rasterio.transform.from_bounds(*body.area_coords, width=w, height=h)
-    file_path = Path(f'/tmp/{uuid.uuid4()}.tiff')
-
-    def unlink():
-        file_path.unlink()
-
-    with rasterio.open(
-        file_path,
-        mode='w',
-        driver='GTiff',
-        height=h,
-        width=w,
-        count=1,
-        dtype=labels.dtype,
-        crs=CRS.from_string('EPSG:4326'),
-        nodata=None,
-        transform=transform,
-    ) as dst:
-        dst.write(labels, 1)
-        if body.fusion_mode == FusionMode.ONLY_CORINE:
-            dst.write_colormap(1, dict(enumerate([d.color for d in request.app.state.corine_labels])))
-        else:
-            dst.write_colormap(1, dict(enumerate([d.color for d in request.app.state.labels])))
-
-    log.info(f'Finished creating segmentation for {body}')
-
-    return GeoTiffResponse(
-        file_path,
-        media_type='image/geotiff',
-        filename='segmentation.tiff',
-        background=BackgroundTask(unlink),
-    )
+    return PredictionResult(labels, h, w, buffered_bbox_coords, bbox.geometry)
 
 
 @segment.get('/describe', description='Return semantic segmentation labels dictionary')

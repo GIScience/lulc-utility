@@ -30,25 +30,21 @@ rio_logging.getLogger('rasterio._filepath').setLevel(logging.ERROR)
 class ImageryStore(ABC):
     @abstractmethod
     def imagery(
-        self, area_coords: Tuple, start_date: str, end_date: str, resolution: int = 10
-    ) -> tuple[Dict[str, np.ndarray], tuple[int, int]]:
+        self,
+        area_coords: Tuple[float, float, float, float],
+        start_date: str,
+        end_date: str,
+        resolution: int = 10,
+    ) -> Tuple[Dict[str, np.ndarray], Tuple[int, int]]:
         pass
 
     def labels(
         self,
-        area_coords: Tuple,
-        cor_api_id: str,
-        catalog_id: str,
-        service_url: str,
-        evalscript_dir: Path,
-        evalscript_name: str,
+        area_coords: Tuple[float, float, float, float],
         start_date: str,
         end_date: str,
-        evalscript_name_cor: str,
-        corine_years: list,
-        cache_dir: Path,
         resolution: int = 100,
-    ) -> (tuple)[Dict[str, np.ndarray], tuple[int, int]]:
+    ) -> Tuple[Dict[str, np.ndarray], tuple[int, int]]:
         pass
 
 
@@ -86,7 +82,7 @@ class SentinelHubOperator(ImageryStore):
 
     def imagery(
         self,
-        area_coords: Tuple,
+        area_coords: Tuple[float, float, float, float],
         start_date: str,
         end_date: str,
         resolution: int = 10,
@@ -144,7 +140,7 @@ class SentinelHubOperator(ImageryStore):
 
     def labels(
         self,
-        area_coords: Tuple,
+        area_coords: Tuple[float, float, float, float],
         start_date: str,
         end_date: str,
         resolution: int = 100,
