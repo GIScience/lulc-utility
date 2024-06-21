@@ -176,7 +176,7 @@ segment = APIRouter(prefix='/segment')
 
 
 @health.get('', status_code=200, description='Verify whether the application API is operational')
-def is_ok() -> HealthCheck:
+async def is_ok() -> HealthCheck:
     return HealthCheck()
 
 
@@ -186,7 +186,7 @@ def is_ok() -> HealthCheck:
     '(1/4 target low-resolution, medium-compression image)',
     response_class=ImageResponse,
 )
-def segment_preview(body: LulcWorkUnit, request: Request) -> ImageResponse:
+async def segment_preview(body: LulcWorkUnit, request: Request) -> ImageResponse:
     log.info(f'Creating preview for {body}')
     result = __predict(body, request)
 
@@ -207,7 +207,7 @@ def segment_preview(body: LulcWorkUnit, request: Request) -> ImageResponse:
     description='Run the semantic segmentation algorithm and return a georeferenced raster (GeoTIFF)',
     response_class=GeoTiffResponse,
 )
-def segment_compute(body: LulcWorkUnit, request: Request) -> GeoTiffResponse:
+async def segment_compute(body: LulcWorkUnit, request: Request) -> GeoTiffResponse:
     log.info(f'Creating segmentation for {body}')
     result = __predict(body, request)
 
@@ -278,7 +278,7 @@ def __predict(body: LulcWorkUnit, request: Request) -> PredictionResult:
 
 
 @segment.get('/describe', description='Return semantic segmentation labels dictionary')
-def segment_describe(request: Request) -> Dict[str, LabelDescriptor]:
+async def segment_describe(request: Request) -> Dict[str, LabelDescriptor]:
     return {label.name: label for label in request.app.state.labels}
 
 
