@@ -1,7 +1,6 @@
 import logging
 from enum import Enum
 from datetime import datetime
-from functools import lru_cache
 from typing import Tuple, Callable
 
 import numpy as np
@@ -27,7 +26,6 @@ class FusionMode(Enum):
     ONLY_CORINE = 'only_corine'
 
 
-@lru_cache(maxsize=32)
 def predict(
     imagery_store: ImageryStore,
     osm: OhsomeOps,
