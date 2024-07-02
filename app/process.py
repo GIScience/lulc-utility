@@ -1,7 +1,7 @@
 import logging
 from enum import Enum
 from datetime import datetime
-from typing import Tuple, Callable
+from typing import Tuple, Callable, Dict, Optional
 
 import numpy as np
 import numpy.ma as ma
@@ -9,6 +9,7 @@ from fastapi import HTTPException
 from onnxruntime import InferenceSession
 from scipy.special import softmax
 
+from lulc.data.label import HashableDict, LabelDescriptor
 from lulc.data.tx.array import ReclassifyMerge
 from lulc.ops.exception import OperatorValidationException, OperatorInteractionException
 from lulc.ops.imagery_store_operator import ImageryStore
@@ -24,17 +25,19 @@ class FusionMode(Enum):
     FAVOUR_MODEL = 'favour_model'
     MEAN_MIXIN = 'mean_mixin'
     ONLY_CORINE = 'only_corine'
+    HARMONIZED_CORINE = 'harmonized_corine'
 
 
-def predict(
+def analyse(
     imagery_store: ImageryStore,
     osm: OhsomeOps,
     inference_session: InferenceSession,
     tx: Callable,
-    osm_lulc_mapping: dict,
+    osm_lulc_mapping: HashableDict[str, LabelDescriptor],
+    corine_lulc_mapping: HashableDict[str, LabelDescriptor],
     threshold: float,
     area_coords: Tuple[float, float, float, float],
-    start_date: str,
+    start_date: Optional[str],
     end_date: str,
     fusion_mode: FusionMode,
 ):
@@ -49,36 +52,41 @@ def predict(
     :param inference_session: ONNX inference session
     :param tx: data transformation and adjustment pipeline
     :param osm_lulc_mapping: LULC classes expressed as OSM filters
+    :param corine_lulc_mapping: LULC classes derived from CLC catalog
     :param threshold: Class prediction threshold
     :param area_coords: coordinates of the prediction target area
-    :param start_date: Lower bound (inclusive) of remote sensing imagery acquisition date (UTC)
-    :param end_date: Upper bound (inclusive) of remote sensing imagery and OSM reference data acquisition date (UTC)
+    :param start_date: Lower bound (inclusive) of remote sensing data acquisition date (UTC)
+    :param end_date: Upper bound (inclusive) of remote sensing data, OSM reference data acquisition date (UTC)
     :param fusion_mode: determine whether and how model data has to be merged with OSM data
     :return: 2D numpy array with most probable classes
     """
     log.debug('Running model inference pipeline')
 
     try:
-        if fusion_mode == FusionMode.ONLY_CORINE:
-            end_date_dt = datetime.strptime(end_date, '%Y-%m-%d')
-            if end_date_dt.year >= 1990:
-                labels, imager_size = imagery_store.labels(area_coords, start_date, end_date)
-                return labels, imager_size
+        if fusion_mode in [FusionMode.ONLY_CORINE, FusionMode.HARMONIZED_CORINE]:
+            if datetime.strptime(end_date, '%Y-%m-%d').year >= 1990:
+                labels, imagery_size = imagery_store.labels(area_coords, end_date)
+
+                if fusion_mode == FusionMode.HARMONIZED_CORINE:
+                    labels = __harmonize(labels, osm_lulc_mapping, corine_lulc_mapping)
+
+                return labels, imagery_size
             else:
                 raise HTTPException(status_code=400, detail='CORINE data is not available before 1990')
         else:
-            imagery, imager_size = imagery_store.imagery(area_coords, start_date, end_date)
+            imagery, imagery_size = imagery_store.imagery(area_coords, start_date, end_date)
             imagery = tx({'imagery': imagery})
 
             logits = inference_session.run(output_names=None, input_feed=imagery)[0][0]
             labels = __fusion(osm, osm_lulc_mapping, threshold, area_coords, end_date, fusion_mode, logits)
 
-            log.debug('Model inference pipeline completed')
-            return labels, imager_size
+            return labels, imagery_size
     except OperatorValidationException as e:
         raise HTTPException(status_code=400, detail=str(e))
     except OperatorInteractionException as e:
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        log.debug('Model inference pipeline completed')
 
 
 def __fusion(
@@ -108,7 +116,7 @@ def __fusion(
         labels = masked_argmax(pred)
     else:
         osm_labels = osm.labels(area_coords, date, osm_lulc_mapping, pred.shape[-2:])
-        osm_labels = ReclassifyMerge()({'y': osm_labels})['y']
+        osm_labels = ReclassifyMerge()({'y': osm_labels})['y'].astype(np.uint8)
         labels = masked_argmax(pred)
 
         if fusion_mode == FusionMode.FAVOUR_OSM:
@@ -123,3 +131,14 @@ def __fusion(
     log.debug(f'Predictions fused in {fusion_mode} mode')
 
     return labels
+
+
+def __harmonize(labels: np.ndarray, osm_labels: Dict, corine_labels: Dict) -> np.ndarray:
+    harmonized_labels = np.zeros_like(labels)
+
+    for corine_label in corine_labels.values():
+        if corine_label.osm_ref is not None and corine_label.osm_ref in osm_labels:
+            harmonized_value = osm_labels[corine_label.osm_ref].raster_value
+            harmonized_labels[labels == corine_label.raster_value] = harmonized_value
+
+    return harmonized_labels

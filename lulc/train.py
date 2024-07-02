@@ -51,18 +51,18 @@ def train(cfg: DictConfig) -> None:
     )
     neptune_logger.log_hyperparams(params=cfg.model)
     neptune_logger.experiment['data/area'] = cfg.data.descriptor.area
-    neptune_logger.experiment['data/label'] = cfg.data.descriptor.labels
+    neptune_logger.experiment['data/label'] = cfg.data.descriptor.label
     neptune_logger.experiment['data/imagery'] = cfg.imagery.operator
 
     log.info(f'Configuring remote sensing imagery store: {cfg.imagery.operator}')
     imagery_store = resolve_imagery_store(cfg.imagery, cache_dir=Path(cfg.cache.dir))
 
     with EnergyContext(neptune_logger.experiment, enable_tracking=cfg.environment.energy_tracker) as energy_context:
-        log.info(f'Initializing dataset (area: {cfg.data.descriptor.area}, label: {cfg.data.descriptor.labels})')
+        log.info(f'Initializing dataset (area: {cfg.data.descriptor.area}, label: {cfg.data.descriptor.label})')
 
         dataset = AreaDataset(
             area_descriptor_ver=cfg.data.descriptor.area,
-            label_descriptor_ver=cfg.data.descriptor.labels,
+            label_descriptor_ver=cfg.data.descriptor.label,
             imagery_store=imagery_store,
             data_dir=Path(cfg.data.dir),
             cache_dir=Path(cfg.cache.dir),
@@ -148,7 +148,7 @@ def train(cfg: DictConfig) -> None:
             model=model,
             run_name=run_name,
             run_url=neptune_logger.experiment.get_url(),
-            label_descriptor_version=cfg.data.descriptor.labels,
+            label_descriptor_version=cfg.data.descriptor.label.osm,
         )
 
 

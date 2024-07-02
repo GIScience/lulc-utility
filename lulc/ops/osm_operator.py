@@ -17,6 +17,8 @@ from pyproj.aoi import AreaOfInterest
 from pyproj.database import query_utm_crs_info
 from rasterio.enums import Resampling
 
+from lulc.data.label import LabelDescriptor
+
 
 class OhsomeOps:
     def __init__(self, cache_dir: Path, resolution=(-0.0001, 0.0001)):
@@ -30,7 +32,7 @@ class OhsomeOps:
         self,
         area_coords: Tuple[float, float, float, float],
         time: str,
-        osm_lulc_mapping: Dict,
+        osm_lulc_mapping: Dict[str, LabelDescriptor],
         target_size: Tuple[int, int],
     ) -> Dict[str, np.ndarray]:
         result = {}
@@ -40,6 +42,8 @@ class OhsomeOps:
         utm = self.__utm_from_coords(area_coords)
 
         compute_label_mask_p = partial(self.__compute_label_mask, area_coords, bbox_id, time, utm, height, width)
+        osm_lulc_mapping = dict([(k, v) for k, v in osm_lulc_mapping.items() if v.osm_filter is not None])
+
         with ThreadPool(len(osm_lulc_mapping)) as pool:
             for label, data in pool.map(compute_label_mask_p, osm_lulc_mapping.items()):
                 result[label] = data.astype(np.bool_)
@@ -54,10 +58,10 @@ class OhsomeOps:
         utm: str,
         height: int,
         width: int,
-        osm_lulc_mapping: Tuple[str, str],
+        osm_lulc_mapping: Tuple[str, LabelDescriptor],
     ) -> Tuple[str, np.ndarray]:
-        label, osm_filter = osm_lulc_mapping
-        data_folder = self.cache_dir / label
+        label_name, label = osm_lulc_mapping
+        data_folder = self.cache_dir / label_name
         data_folder.mkdir(parents=True, exist_ok=True)
         raster_data = data_folder / f'{bbox_id}.tiff'
 
@@ -65,7 +69,7 @@ class OhsomeOps:
             vector_data = self.ohsome.elements.geometry.post(
                 bboxes=bbox,
                 time=time,
-                filter=f'({osm_filter}) and geometry:polygon',
+                filter=f'({label.osm_filter}) and geometry:polygon',
             ).as_dataframe()
             extent_data = gpd.GeoDataFrame(
                 index=['extent'],
@@ -86,7 +90,7 @@ class OhsomeOps:
             with rasterio.open(raster_data) as dataset:
                 data = dataset.read(1, out_shape=(dataset.count, height, width), resampling=Resampling.bilinear)
 
-        return label, data
+        return label_name, data
 
     @staticmethod
     def __calculate_id(text: str) -> uuid.UUID:

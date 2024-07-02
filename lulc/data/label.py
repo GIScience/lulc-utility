@@ -10,7 +10,17 @@ from pydantic import BaseModel, Field
 class LabelDescriptor(BaseModel):
     """Segmentation label definition."""
 
-    name: str = Field(title='Name', description='Name of the segmentation label.', examples=['Forest'])
+    name: str = Field(
+        title='Name',
+        description='Name of the segmentation label.',
+        examples=['Forest'],
+    )
+    osm_ref: Optional[str] = Field(
+        title='OSM Reference',
+        description='Name of matching OSM label used during harmonization process',
+        examples=['Forest'],
+        default=None,
+    )
     description: Optional[str] = Field(
         title='Description',
         description='A concise label description or caption.',
@@ -25,10 +35,14 @@ class LabelDescriptor(BaseModel):
         default=None,
     )
     raster_value: int = Field(
-        title='Raster Value', description='The numeric value in the raster that represents this label.', examples=[1]
+        title='Raster Value',
+        description='The numeric value in the raster that represents this label.',
+        examples=[1],
     )
     color: Tuple[int, int, int] = Field(
-        title='Color Hex-Code', description='The RGB-color values of the label', examples=[(255, 0, 0)]
+        title='Color',
+        description='The RGB-color values of the label',
+        examples=[(255, 0, 0)],
     )
 
 
@@ -45,31 +59,25 @@ BACKGROUND_DESCRIPTOR = LabelDescriptor(
 )
 
 
-def resolve_labels(data_dir: Path, label_descriptor_version: str) -> List[LabelDescriptor]:
-    def aux(color: str) -> Tuple[int, int, int]:
-        r, g, b = ImageColor.getcolor(color, 'RGB')
-        return r, g, b
+def hex_to_rgb_color(color: str) -> Tuple[int, int, int]:
+    r, g, b = ImageColor.getcolor(color, 'RGB')
+    return r, g, b
 
+
+def resolve_osm_labels(data_dir: Path, label_descriptor_version: str) -> List[LabelDescriptor]:
     with open(str(data_dir / 'label' / f'label_{label_descriptor_version}.yaml'), 'r') as file:
-        labels_descriptor = pd.DataFrame(yaml.safe_load(file))
+        labels_descriptor = pd.DataFrame(yaml.safe_load(file)['osm'])
+
         labels_descriptor['raster_value'] = pd.RangeIndex(1, len(labels_descriptor) + 1)
-        labels_descriptor['color_code'] = labels_descriptor['color_code'].apply(aux).values
+        labels_descriptor['color_code'] = labels_descriptor['color_code'].apply(hex_to_rgb_color).values
         labels_descriptor = labels_descriptor.rename(columns={'color_code': 'color'})
         return [BACKGROUND_DESCRIPTOR] + [LabelDescriptor(**row) for _, row in labels_descriptor.iterrows()]
 
 
-def resolve_osm_labels(labels: List[LabelDescriptor]) -> HashableDict:
-    labels_dict = dict([(d.name, d.osm_filter) for d in labels if d.osm_filter is not None])
-    return HashableDict(labels_dict)
+def resolve_corine_labels(data_dir: Path, label_descriptor_version: str) -> List[LabelDescriptor]:
+    with open(str(data_dir / 'label' / f'label_{label_descriptor_version}.yaml'), 'r') as file:
+        labels_descriptor = pd.DataFrame(yaml.safe_load(file)['corine'])
 
-
-def resolve_corine_labels(data_dir: Path) -> List[LabelDescriptor]:
-    def aux(color: str) -> Tuple[int, int, int]:
-        r, g, b = ImageColor.getcolor(color, 'RGB')
-        return r, g, b
-
-    with open(str(data_dir / 'label' / 'corine.yaml'), 'r') as file:
-        labels_descriptor = pd.DataFrame(yaml.safe_load(file))
         labels_descriptor['raster_value'] = pd.RangeIndex(1, len(labels_descriptor) + 1)
-        labels_descriptor['color'] = labels_descriptor['color'].apply(aux).values
+        labels_descriptor['color'] = labels_descriptor['color'].apply(hex_to_rgb_color).values
         return [BACKGROUND_DESCRIPTOR] + [LabelDescriptor(**row) for _, row in labels_descriptor.iterrows()]

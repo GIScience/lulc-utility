@@ -34,7 +34,7 @@ def calculate_dataset_statistics(cfg: DictConfig) -> None:
 
     dataset = AreaDataset(
         area_descriptor_ver=cfg.data.descriptor.area,
-        label_descriptor_ver=cfg.data.descriptor.labels,
+        label_descriptor_ver=cfg.data.descriptor.label,
         data_dir=Path(cfg.data.dir),
         cache_dir=Path(cfg.cache.dir),
         imagery_store=imagery_store,

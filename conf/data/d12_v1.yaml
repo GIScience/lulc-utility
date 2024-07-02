@@ -6,7 +6,7 @@ crop:
   width: 1024
 descriptor:
   area: DE12
-  labels: v3
+  label: v3
 class_weights:
   - 1.641274333000183
   - 1.2735214233398438
