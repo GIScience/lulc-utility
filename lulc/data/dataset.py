@@ -7,7 +7,7 @@ import torch
 from torch.utils.data import Dataset
 from torchvision import transforms
 
-from lulc.data.label import resolve_labels
+from lulc.data.label import resolve_osm_labels
 from lulc.data.tx.tensor import ToTensor
 from lulc.ops.imagery_store_operator import ImageryStore
 from lulc.ops.osm_operator import OhsomeOps
@@ -29,9 +29,9 @@ class AreaDataset(Dataset):
 
         self.area_descriptor = pd.read_csv(str(data_dir / 'area' / f'area_{area_descriptor_ver}.csv'))
 
-        label_descriptors = resolve_labels(data_dir, label_descriptor_ver)
+        label_descriptors = resolve_osm_labels(data_dir, label_descriptor_ver)
         self.labels = [d.name for d in label_descriptors]
-        self.osm_lulc_mapping = dict([(d.name, d.osm_filter) for d in label_descriptors if d.osm_filter is not None])
+        self.osm_lulc_mapping = dict([(d.name, d) for d in label_descriptors if d.osm_filter is not None])
         self.color_codes = [d.color for d in label_descriptors]
 
         self.item_cache = cache_dir / 'items' / area_descriptor_ver / label_descriptor_ver

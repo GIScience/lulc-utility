@@ -41,10 +41,9 @@ class ImageryStore(ABC):
     def labels(
         self,
         area_coords: Tuple[float, float, float, float],
-        start_date: str,
         end_date: str,
-        resolution: int = 100,
-    ) -> Tuple[Dict[str, np.ndarray], tuple[int, int]]:
+        resolution: int = 10,
+    ) -> Tuple[np.ndarray, tuple[int, int]]:
         pass
 
 
@@ -141,23 +140,17 @@ class SentinelHubOperator(ImageryStore):
     def labels(
         self,
         area_coords: Tuple[float, float, float, float],
-        start_date: str,
         end_date: str,
-        resolution: int = 100,
-    ) -> (tuple)[Dict[str, np.ndarray], tuple[int, int]]:
+        resolution: int = 10,
+    ) -> Tuple[np.ndarray, tuple[int, int]]:
         bbox = BBox(bbox=area_coords, crs=CRS.WGS84)
         bbox_width, bbox_height = bbox_to_dimensions(bbox, resolution=resolution)
 
         corine_years = self.corine_years
 
-        end_date_dt = datetime.strptime(end_date, '%Y-%m-%d')
-
-        filtered_years = list(filter(lambda year: year <= end_date_dt.year, corine_years))
-
-        corine_end_year = filtered_years[-1]
-        corine_date_str = f'{corine_end_year}-01-01'
-        start_date = corine_date_str
-        end_date = corine_date_str
+        end_date = datetime.strptime(end_date, '%Y-%m-%d')
+        end_date = list(filter(lambda year: year <= end_date.year, corine_years))[-1]
+        end_date = f'{end_date}-01-01'
 
         if bbox_width > 2500 or bbox_height > 2500:
             raise OperatorValidationException('Area exceeds processing limit: 2500 px x 2500 px')
@@ -174,7 +167,7 @@ class SentinelHubOperator(ImageryStore):
                         service_url=self.service_url,
                         is_timeless=False,
                     ),
-                    time_interval=(start_date, end_date),
+                    time_interval=(end_date, end_date),
                 )
             ],
             responses=[

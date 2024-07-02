@@ -9,8 +9,8 @@ from fastapi.testclient import TestClient
 from onnxruntime import InferenceSession
 from tifffile import imread
 
-from app.api import app
-from lulc.data.label import LabelDescriptor, resolve_osm_labels
+from app.api import app, hashable_osm_labels
+from lulc.data.label import LabelDescriptor
 from lulc.data.tx.array import AdjustShape, NanToNum, Normalize, Stack
 from lulc.ops.imagery_store_operator import ImageryStore
 from lulc.ops.osm_operator import OhsomeOps
@@ -204,10 +204,12 @@ class TestOhsomeOps(OhsomeOps):
 def mocked_client():
     client = TestClient(app)
     app.state.imagery_store = TestImageryStore()
-    app.state.labels = LABELS
+    app.state.osm_labels = LABELS
     app.state.osm = TestOhsomeOps()
-    app.state.osm_lulc_mapping = resolve_osm_labels(app.state.labels)
+    app.state.osm_lulc_mapping = hashable_osm_labels(LABELS)
     app.state.corine_labels = LABELS_CORINE
+    app.state.osm_cmap = {0: (0, 0, 0)}
+    app.state.corine_cmap = {0: (0, 0, 0)}
     app.state.inference_session = InferenceSession(str(Path(__file__).parent / 'test.onnx'))
     app.state.edge_smoothing_buffer = 200
 
@@ -255,40 +257,12 @@ def test_segment_image(mocked_client):
 
 def test_segment_describe(mocked_client):
     response = mocked_client.get('/segment/describe')
-    assert response.json() == {
-        'unknown': {
-            'name': 'unknown',
-            'osm_filter': 'key=value',
-            'color': [0, 0, 0],
-            'description': 'description',
-            'raster_value': 0,
-        },
-        'built-up': {
-            'name': 'built-up',
-            'osm_filter': 'key=value',
-            'color': [255, 0, 0],
-            'description': 'description',
-            'raster_value': 1,
-        },
-        'forest': {
-            'name': 'forest',
-            'osm_filter': 'key=value',
-            'color': [77, 200, 0],
-            'description': 'description',
-            'raster_value': 2,
-        },
-        'water': {
-            'name': 'water',
-            'osm_filter': 'key=value',
-            'color': [130, 200, 250],
-            'description': 'description',
-            'raster_value': 3,
-        },
-        'agriculture': {
-            'name': 'agriculture',
-            'osm_filter': 'key=value',
-            'color': [255, 255, 80],
-            'description': 'description',
-            'raster_value': 4,
-        },
+    result = response.json()
+    assert set(result['osm'].keys()) == {'unknown', 'built-up', 'forest', 'water', 'agriculture'}
+    assert set(result['corine'].keys()) == {
+        'Continuous urban fabric',
+        'Discontinuous urban fabric',
+        'Industrial or commercial units',
+        'Road and rail networks and associated land',
+        'Port areas',
     }

@@ -1,24 +1,162 @@
-- name: built-up
-  osm_filter: landuse=civic_admin or landuse=commercial or landuse=depot or landuse=education or landuse=farmyard or landuse=garages or landuse=industrial or landuse=railway or landuse=residential or landuse=retail
-  color_code: '#ff0000'
-  description: 'This class is a combination of land-use classes that should consist of mostly built-up land cover.'
-- name: forest
-  osm_filter: landuse=forest or natural=wood
-  color_code: '#4dc800'
-  description: 'Managed and unmanaged tree covers.'
-- name: water
-  osm_filter: landuse=reservoir or natural=water or waterway=dock or waterway=riverbank
-  color_code: '#82c8fa'
-  description:
-- name: farmland
-  osm_filter: landuse=farmland
-  color_code: '#ffff50'
-  description: 'Agricultural land that is regularly tilled.'
-- name: permanent_crops
-  osm_filter: landuse=vineyard or landuse=orchard
-  color_code: '#e68000'
-  description:
-- name: grass
-  osm_filter: landuse=meadow or landuse=grass or natural=grassland
-  color_code: '#cdebb0'
-  description: 'There is no distinction between urban green spaces, grasslands and pastures.'
+osm:
+  - name: built-up
+    osm_filter: landuse=civic_admin or landuse=commercial or landuse=depot or landuse=education or landuse=farmyard or landuse=garages or landuse=industrial or landuse=railway or landuse=residential or landuse=retail
+    color_code: '#ff0000'
+    description: 'This class is a combination of land-use classes that should consist of mostly built-up land cover.'
+  - name: forest
+    osm_filter: landuse=forest or natural=wood
+    color_code: '#4dc800'
+    description: 'Managed and unmanaged tree covers.'
+  - name: water
+    osm_filter: landuse=reservoir or natural=water or waterway=dock or waterway=riverbank
+    color_code: '#82c8fa'
+    description:
+  - name: farmland
+    osm_filter: landuse=farmland
+    color_code: '#ffff50'
+    description: 'Agricultural land that is regularly tilled.'
+  - name: permanent_crops
+    osm_filter: landuse=vineyard or landuse=orchard
+    color_code: '#e68000'
+    description:
+  - name: grass
+    osm_filter: landuse=meadow or landuse=grass or natural=grassland
+    color_code: '#cdebb0'
+    description: 'There is no distinction between urban green spaces, grasslands and pastures.'
+
+corine:
+  - name: continuous_urban_fabric
+    color: '#e6004d'
+    osm_ref: built-up
+  - name: discontinuous_urban_fabric
+    color: '#ff0000'
+    osm_ref: built-up
+  - name: industrial_or_commercial_units
+    color: '#cc4df2'
+    osm_ref: built-up
+  - name: road_and_rail_networks_and_associated_land
+    color: '#cc0000'
+    osm_ref: built-up
+  - name: port_areas
+    color: '#e6cccc'
+    osm_ref: built-up
+  - name: airports
+    color: '#e6cce6'
+    osm_ref: built-up
+  - name: mineral_extraction_sites
+    color: '#a600cc'
+    osm_ref: built-up
+  - name: dump_sites
+    color: '#a64d00'
+    osm_ref: built-up
+  - name: construction_sites
+    color: '#ff4dff'
+    osm_ref: built-up
+  - name: green_urban_areas
+    color: '#ffa6ff'
+    osm_ref: grass
+  - name: sport_and_leisure_facilities
+    color: '#ffe6ff'
+    osm_ref:
+  - name: non_irrigated_arable_land
+    color: '#ffffa8'
+    osm_ref: farmland
+  - name: permanently_irrigated_land
+    color: '#ffff00'
+    osm_ref: farmland
+  - name: rice_fields
+    color: '#e6e600'
+    osm_ref: farmland
+  - name: vineyards
+    color: '#e68000'
+    osm_ref: permanent_crops
+  - name: fruit_trees_and_berry_plantations
+    color: '#f2a64d'
+    osm_ref: permanent_crops
+  - name: olive_groves
+    color: '#e6a600'
+    osm_ref: permanent_crops
+  - name: pastures
+    color: '#e6e64d'
+    osm_ref: grass
+  - name: annual_crops_associated_with_permanent_crops
+    color: '#ffe6a6'
+    osm_ref: farmland
+  - name: complex_cultivation_patterns
+    color: '#ffe64d'
+    osm_ref:
+  - name: land_principally_occupied_by_agriculture_with_significant_areas_of_natural_vegetation
+    color: '#e6cc4d'
+    osm_ref: farmland
+  - name: agro_forestry_areas
+    color: '#f2cca6'
+    osm_ref: forest
+  - name: broad_leaved_forest
+    color: '#80ff00'
+    osm_ref: forest
+  - name: coniferous_forest
+    color: '#00a600'
+    osm_ref: forest
+  - name: mixed_forest
+    color: '#4dff00'
+    osm_ref: forest
+  - name: natural_grasslands
+    color: '#ccf24d'
+    osm_ref: grass
+  - name: moors_and_heathland
+    color: '#a6ff80'
+    osm_ref: grass
+  - name: sclerophyllous_vegetation
+    color: '#a6e64d'
+    osm_ref: grass
+  - name: transitional_woodland_shrub
+    color: '#a6f200'
+    osm_ref:
+  - name: beaches_dunes_sands
+    color: '#e6e6e6'
+    osm_ref:
+  - name: bare_rocks
+    color: '#cccccc'
+    osm_ref:
+  - name: sparsely_vegetated_areas
+    color: '#ccffcc'
+    osm_ref: grass
+  - name: burnt_areas
+    color: '#000000'
+    osm_ref:
+  - name: glaciers_and_perpetual_snow
+    color: '#a6e6cc'
+    osm_ref:
+  - name: inland_marshes
+    color: '#a6a6ff'
+    osm_ref: grass
+  - name: peat_bogs
+    color: '#4d4dff'
+    osm_ref: grass
+  - name: salt_marshes
+    color: '#ccccff'
+    osm_ref:
+  - name: salines
+    color: '#e6e6ff'
+    osm_ref: water
+  - name: intertidal_flats
+    color: '#a6a6e6'
+    osm_ref:
+  - name: water_courses
+    color: '#00ccf2'
+    osm_ref: water
+  - name: water_bodies
+    color: '#80f2e6'
+    osm_ref: water
+  - name: coastal_lagoons
+    color: '#00ffa6'
+    osm_ref: water
+  - name: estuaries
+    color: '#a6ffe6'
+    osm_ref: water
+  - name: sea_and_ocean
+    color: '#e6f2ff'
+    osm_ref: water
+  - name: nodata
+    color: '#ffffff'
+    osm_ref:

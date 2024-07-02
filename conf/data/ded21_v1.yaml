@@ -6,7 +6,7 @@ crop:
   width: 1024
 descriptor:
   area: DED21
-  labels: v3
+  label: v3
 class_weights:
   - 1.7969982624053955
   - 0.5889190435409546

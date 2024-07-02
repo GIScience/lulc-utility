@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 
+from lulc.data.label import LabelDescriptor
 from lulc.ops.osm_operator import OhsomeOps
 
 
@@ -14,8 +15,12 @@ def test_ohsome_fetch():
         ops = OhsomeOps(cache_dir=temp_dir)
 
         osm_lulc = {
-            'urban': 'landuse=residential or landuse=industrial',
-            'forest': 'landuse=forest or natural=wood',
+            'urban': LabelDescriptor(
+                name='urban', osm_filter='landuse=residential or landuse=industrial', raster_value=1, color=(0, 0, 0)
+            ),
+            'forest': LabelDescriptor(
+                name='forest', osm_filter='landuse=forest or natural=wood', raster_value=2, color=(0, 0, 0)
+            ),
         }
 
         result = ops.labels(test_coords, '2020-06-30', osm_lulc, (300, 300))

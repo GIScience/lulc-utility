@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, List
 
 import hydra
 import numpy as np
@@ -14,6 +14,7 @@ import rasterio
 import uvicorn
 import yaml
 from PIL import Image
+from PIL.Image import Resampling
 from fastapi import APIRouter, FastAPI
 from hydra import compose
 from onnxruntime import InferenceSession
@@ -26,8 +27,8 @@ from starlette.background import BackgroundTask
 from starlette.requests import Request
 from starlette.responses import FileResponse, Response
 
-from app.predict import FusionMode, predict
-from lulc.data.label import resolve_labels, resolve_osm_labels, resolve_corine_labels, LabelDescriptor
+from app.process import FusionMode, analyse
+from lulc.data.label import resolve_corine_labels, LabelDescriptor, resolve_osm_labels, HashableDict
 from lulc.data.tx.array import Normalize, Stack, NanToNum, AdjustShape
 from lulc.model.ops.download import NeptuneModelDownload
 from lulc.ops.imagery_store_operator import resolve_imagery_store
@@ -55,7 +56,7 @@ class GeoTiffResponse(FileResponse):
 
 
 @dataclass
-class PredictionResult:
+class AnalysisResult:
     labels: np.ndarray
     height: int
     width: int
@@ -89,9 +90,12 @@ async def configure_dependencies(app: FastAPI):
 
     onnx_model, label_descriptor_version = registry.download_model_version(cfg.serve.model_version)
 
-    app.state.labels = resolve_labels(Path(cfg.data.dir), label_descriptor_version)
-    app.state.osm_lulc_mapping = resolve_osm_labels(app.state.labels)
-    app.state.corine_labels = resolve_corine_labels(Path(cfg.data.dir))
+    app.state.osm_labels = resolve_osm_labels(Path(cfg.data.dir), label_descriptor_version)
+    app.state.osm_cmap = dict(enumerate([d.color for d in app.state.osm_labels]))
+
+    app.state.corine_labels = resolve_corine_labels(Path(cfg.data.dir), label_descriptor_version)
+    app.state.corine_cmap = dict(enumerate([d.color for d in app.state.corine_labels]))
+
     app.state.inference_session = InferenceSession(str(onnx_model))
 
     def tx(x):
@@ -159,7 +163,9 @@ class LulcWorkUnit(BaseModel):
         '"unknown" for the model, '
         '`favour_osm` - model results will be used to fill in empty OSM data, '
         '`mean_mixin` - model and OSM will simultaneously contribute to '
-        'overall classification',
+        'overall classification'
+        '`only_corine` - return raw CLC data'
+        '`harmonized_corine` - return CLC data reclassified to match model output',
         default=FusionMode.ONLY_MODEL,
         examples=[FusionMode.ONLY_MODEL],
     )
@@ -183,16 +189,23 @@ async def is_ok() -> HealthCheck:
 @segment.post(
     '/preview',
     description='Run the semantic segmentation algorithm and return a preview of the result '
-    '(1/4 target low-resolution, medium-compression image)',
+    '(low-resolution, medium-compression image)',
     response_class=ImageResponse,
 )
 async def segment_preview(body: LulcWorkUnit, request: Request) -> ImageResponse:
     log.info(f'Creating preview for {body}')
-    result = __predict(body, request)
+    result = __analyse(body, request)
 
-    labels = request.app.state.corine_labels if body.fusion_mode == FusionMode.ONLY_CORINE else request.app.state.labels
+    labels = (
+        request.app.state.corine_labels if body.fusion_mode == FusionMode.ONLY_CORINE else request.app.state.osm_labels
+    )
+
     labels = np.array([d.color for d in labels], dtype=np.uint8)[result.labels]
     labels = Image.fromarray(labels)
+    labels = labels.resize(
+        (512, 512),
+        resample=Resampling.NEAREST,
+    )
 
     buf = io.BytesIO()
     labels.save(buf, format='PNG')
@@ -209,7 +222,7 @@ async def segment_preview(body: LulcWorkUnit, request: Request) -> ImageResponse
 )
 async def segment_compute(body: LulcWorkUnit, request: Request) -> GeoTiffResponse:
     log.info(f'Creating segmentation for {body}')
-    result = __predict(body, request)
+    result = __analyse(body, request)
 
     file_path = Path(f'/tmp/{uuid.uuid4()}.tiff')
 
@@ -228,23 +241,28 @@ async def segment_compute(body: LulcWorkUnit, request: Request) -> GeoTiffRespon
         nodata=None,
         transform=rasterio.transform.from_bounds(*result.area_coords, width=result.width, height=result.height),
     ) as dst:
-        dst.write(result.labels, 1)
-
         masked_image, out_transform = mask(dst, shapes=[result.clip_geometry], crop=True)
         out_profile = dst.profile.copy()
 
     out_profile.update(
-        {'driver': 'GTiff', 'height': masked_image.shape[1], 'width': masked_image.shape[2], 'transform': out_transform}
+        {
+            'driver': 'GTiff',
+            'height': masked_image.shape[1],
+            'width': masked_image.shape[2],
+            'transform': out_transform,
+        }
     )
 
     with rasterio.open(file_path, 'w', **out_profile) as dst:
         dst.write(masked_image)
-        colors = (
-            request.app.state.corine_labels if body.fusion_mode == FusionMode.ONLY_CORINE else request.app.state.labels
-        )
-        dst.write_colormap(1, dict(enumerate([d.color for d in colors])))
+
+        if body.fusion_mode == FusionMode.ONLY_CORINE:
+            dst.write_colormap(1, request.app.state.corine_cmap)
+        else:
+            dst.write_colormap(1, request.app.state.osm_cmap)
 
     log.info(f'Finished creating segmentation for {body}')
+
     return GeoTiffResponse(
         file_path,
         media_type='image/geotiff',
@@ -253,33 +271,45 @@ async def segment_compute(body: LulcWorkUnit, request: Request) -> GeoTiffRespon
     )
 
 
-def __predict(body: LulcWorkUnit, request: Request) -> PredictionResult:
+def __analyse(body: LulcWorkUnit, request: Request) -> AnalysisResult:
+    def hashable_labels(labels: List[LabelDescriptor]) -> HashableDict:
+        labels_dict = dict({i.name: i for i in labels})
+        return HashableDict(labels_dict)
+
     bbox = BBox(bbox=body.area_coords, crs=SCRS.WGS84)
     buffered_bbox = (
         to_utm_bbox(bbox).buffer(request.app.state.edge_smoothing_buffer, relative=False).transform(crs=SCRS.WGS84)
     )
+    buffered_bbox = buffered_bbox.lower_left + buffered_bbox.upper_right
 
-    buffered_bbox_coords = buffered_bbox.lower_left + buffered_bbox.upper_right
-
-    labels, (h, w) = predict(
-        request.app.state.imagery_store,
-        request.app.state.osm,
-        request.app.state.inference_session,
-        request.app.state.tx,
-        request.app.state.osm_lulc_mapping,
-        body.threshold,
-        buffered_bbox_coords,
-        body.start_date.isoformat(),
-        body.end_date.isoformat(),
-        body.fusion_mode,
+    labels, (h, w) = analyse(
+        imagery_store=request.app.state.imagery_store,
+        osm=request.app.state.osm,
+        inference_session=request.app.state.inference_session,
+        tx=request.app.state.tx,
+        osm_lulc_mapping=hashable_labels(request.app.state.osm_labels),
+        corine_lulc_mapping=hashable_labels(request.app.state.corine_labels),
+        threshold=body.threshold,
+        area_coords=buffered_bbox,
+        start_date=body.start_date.isoformat(),
+        end_date=body.end_date.isoformat(),
+        fusion_mode=body.fusion_mode,
     )
 
-    return PredictionResult(labels, h, w, buffered_bbox_coords, bbox.geometry)
+    return AnalysisResult(labels, h, w, buffered_bbox, bbox.geometry)
+
+
+def hashable_osm_labels(labels: List[LabelDescriptor]) -> HashableDict:
+    labels_dict = dict([(d.name, d.osm_filter) for d in labels if d.osm_filter is not None])
+    return HashableDict(labels_dict)
 
 
 @segment.get('/describe', description='Return semantic segmentation labels dictionary')
-async def segment_describe(request: Request) -> Dict[str, LabelDescriptor]:
-    return {label.name: label for label in request.app.state.labels}
+async def segment_describe(request: Request) -> Dict:
+    return {
+        'osm': {label.name: label for label in request.app.state.osm_labels},
+        'corine': {label.name: label for label in request.app.state.corine_labels},
+    }
 
 
 app = FastAPI(lifespan=configure_dependencies)
@@ -290,12 +320,14 @@ if __name__ == '__main__':
     logging.basicConfig(level=log_level.upper())
     with open(log_config) as file:
         logging.config.dictConfig(yaml.safe_load(file))
+
     log.info('Starting LULC Utility')
     uvicorn.run(
-        app,
+        'api:app',
         host='0.0.0.0',
         port=int(os.getenv('LULC_UTILITY_API_PORT', 8000)),
         root_path=os.getenv('ROOT_PATH', '/'),
         log_config=log_config,
         log_level=log_level.lower(),
+        workers=int(os.getenv('LULC_UVICORN_WORKERS', 1)),
     )
