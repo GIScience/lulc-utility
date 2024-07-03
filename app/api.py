@@ -55,6 +55,39 @@ class GeoTiffResponse(FileResponse):
     media_type = 'image/geotiff'
 
 
+class LabelResponse(BaseModel):
+    osm: Dict[str, LabelDescriptor] = Field(
+        title='OSM Labels',
+        description='Labels of classes present in the osm derived data.',
+        examples=[
+            {
+                'corine': LabelDescriptor(
+                    name='unknown',
+                    osm_filter=None,
+                    color=(0, 0, 0),
+                    description='Class Unknown',
+                    raster_value=0,
+                )
+            }
+        ],
+    )
+    corine: Dict[str, LabelDescriptor] = Field(
+        title='CORINE Labels',
+        description='Labels of classes present in the corine derived data.',
+        examples=[
+            {
+                'corine': LabelDescriptor(
+                    name='unknown',
+                    osm_filter=None,
+                    color=(0, 0, 0),
+                    description='Class Unknown',
+                    raster_value=0,
+                )
+            }
+        ],
+    )
+
+
 @dataclass
 class AnalysisResult:
     labels: np.ndarray
@@ -305,11 +338,11 @@ def hashable_osm_labels(labels: List[LabelDescriptor]) -> HashableDict:
 
 
 @segment.get('/describe', description='Return semantic segmentation labels dictionary')
-async def segment_describe(request: Request) -> Dict:
-    return {
-        'osm': {label.name: label for label in request.app.state.osm_labels},
-        'corine': {label.name: label for label in request.app.state.corine_labels},
-    }
+async def segment_describe(request: Request) -> LabelResponse:
+    return LabelResponse(
+        osm={label.name: label for label in request.app.state.osm_labels},
+        corine={label.name: label for label in request.app.state.corine_labels},
+    )
 
 
 app = FastAPI(lifespan=configure_dependencies)
