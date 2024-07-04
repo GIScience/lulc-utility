@@ -274,6 +274,8 @@ async def segment_compute(body: LulcWorkUnit, request: Request) -> GeoTiffRespon
         nodata=None,
         transform=rasterio.transform.from_bounds(*result.area_coords, width=result.width, height=result.height),
     ) as dst:
+        dst.write(result.labels, 1)
+
         masked_image, out_transform = mask(dst, shapes=[result.clip_geometry], crop=True)
         out_profile = dst.profile.copy()
 
