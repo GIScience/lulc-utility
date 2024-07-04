@@ -253,6 +253,7 @@ def test_segment_image(mocked_client):
     assert response.status_code == 200
     assert response.headers['content-type'] == 'image/geotiff'
     assert response_data.shape == (498, 746)
+    assert response_data.sum() > 0
 
 
 def test_segment_describe(mocked_client):
