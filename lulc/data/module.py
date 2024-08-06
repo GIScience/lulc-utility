@@ -4,11 +4,13 @@ from functools import partial
 from typing import Dict
 
 from lightning import LightningDataModule
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader
 
 from lulc.data.augment import build_random_tx
 from lulc.data.collate import center_crop_collate_fn, random_crop_collate_fn
 from lulc.data.dataset import AreaDataset
+
+from lulc.data.sampling import GeospatialStratifiedSampler
 
 log = logging.getLogger(__name__)
 
@@ -36,10 +38,10 @@ class AreaDataModule(LightningDataModule):
         test_size = int(test_frac * len(dataset))
         val_size = len(dataset) - (train_size + test_size)
 
-        log.info(f'Performing random dataset split (train: {train_size}, val: {val_size}, test: {test_size})')
-        self.train_dataset, self.val_dataset, self.test_dataset = random_split(
-            dataset, [train_size, val_size, test_size]
-        )
+        log.info(f'Performing stratified dataset split (train: {train_size}, val: {val_size, }test: {test_size})')
+        sampler = GeospatialStratifiedSampler(dataset, 'geometry')
+
+        self.train_dataset, self.val_dataset, self.test_dataset = sampler.split_dataset()
 
         log.info(f'Attaching random transformations to the training dataset: {list(augment.keys())}')
         self.train_dataset.dataset = copy.deepcopy(self.train_dataset.dataset)
