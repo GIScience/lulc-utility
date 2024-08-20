@@ -1,13 +1,14 @@
 defaults:
   - _self_
-  - data: d12_v1
-  - model: baseline
+  - data: de_v1
+  - model: v1
   - serve: local
   - imagery: sentinel_hub
 
 # Directory where all intermediate data is being store.
 cache:
   dir: ./cache
+  apply: False
 
 environment:
   # Set to run the training proces in a deterministic fashion:

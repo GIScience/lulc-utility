@@ -4,6 +4,7 @@ from pathlib import Path
 from shutil import rmtree
 
 import hydra
+import torch
 import yaml
 from omegaconf import DictConfig
 from torch.utils.data import DataLoader
@@ -29,6 +30,8 @@ def calculate_dataset_statistics(cfg: DictConfig) -> None:
     :param cfg: underlying Hydra configuration
     :return: mean, std and class weights
     """
+    torch.multiprocessing.set_start_method('spawn')
+
     log.info(f'Configuring remote sensing imagery store: {cfg.imagery.operator}')
     imagery_store = resolve_imagery_store(cfg.imagery, cache_dir=Path(cfg.cache.dir))
 
@@ -37,6 +40,7 @@ def calculate_dataset_statistics(cfg: DictConfig) -> None:
         label_descriptor_ver=cfg.data.descriptor.label,
         data_dir=Path(cfg.data.dir),
         cache_dir=Path(cfg.cache.dir),
+        cache_items=cfg.cache.apply,
         imagery_store=imagery_store,
         deterministic_tx=transforms.Compose(
             [
