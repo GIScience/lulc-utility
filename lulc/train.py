@@ -13,6 +13,7 @@ from lightning import seed_everything
 from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
 from lightning.pytorch.loggers import NeptuneLogger
 from lightning.pytorch.tuner import Tuner
+from matplotlib import pyplot as plt
 from omegaconf import DictConfig, OmegaConf
 from torchvision import transforms
 
@@ -27,10 +28,12 @@ from lulc.ops.imagery_store_operator import resolve_imagery_store
 log_level = os.getenv('LOG_LEVEL', 'INFO')
 log_config = 'conf/logging/app/logging.yaml'
 log = logging.getLogger(__name__)
+plt.switch_backend('agg')
 
 
 @hydra.main(version_base=None, config_path='../conf', config_name='config')
 def train(cfg: DictConfig) -> None:
+    torch.multiprocessing.set_start_method('spawn')
     torch.set_float32_matmul_precision(cfg.model.matmul_precision)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     run_name = generate_slug(pattern=3)
@@ -66,6 +69,7 @@ def train(cfg: DictConfig) -> None:
             imagery_store=imagery_store,
             data_dir=Path(cfg.data.dir),
             cache_dir=Path(cfg.cache.dir),
+            cache_items=cfg.cache.apply,
             deterministic_tx=transforms.Compose(
                 [
                     NanToNum(layers=['s1.tif', 's2.tif']),
@@ -148,7 +152,7 @@ def train(cfg: DictConfig) -> None:
             model=model,
             run_name=run_name,
             run_url=neptune_logger.experiment.get_url(),
-            label_descriptor_version=cfg.data.descriptor.label.osm,
+            label_descriptor_version=cfg.data.descriptor.label,
         )
 
 

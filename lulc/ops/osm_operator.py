@@ -1,7 +1,6 @@
 import hashlib
 import uuid
 from functools import partial
-from multiprocessing.pool import ThreadPool
 from pathlib import Path
 from typing import Dict, Tuple
 
@@ -44,9 +43,9 @@ class OhsomeOps:
         compute_label_mask_p = partial(self.__compute_label_mask, area_coords, bbox_id, time, utm, height, width)
         osm_lulc_mapping = dict([(k, v) for k, v in osm_lulc_mapping.items() if v.osm_filter is not None])
 
-        with ThreadPool(len(osm_lulc_mapping)) as pool:
-            for label, data in pool.map(compute_label_mask_p, osm_lulc_mapping.items()):
-                result[label] = data.astype(np.bool_)
+        for item in osm_lulc_mapping.items():
+            label, data = compute_label_mask_p(item)
+            result[label] = data.astype(np.bool_)
 
         return result
 

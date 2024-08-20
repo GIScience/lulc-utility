@@ -1,6 +1,6 @@
 import logging
 import math
-from typing import Any, List, Tuple
+from typing import Any, List, Tuple, Dict
 
 import lightning.pytorch as pl
 import matplotlib.pyplot as plt
@@ -8,6 +8,7 @@ import torch
 import torch.nn.functional as F
 from neptune.types import File
 from torch.optim import Adam
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torchmetrics import Accuracy, F1Score, JaccardIndex, MeanMetric, Precision, Recall
 from torchvision.transforms import Resize
 from transformers import SegformerConfig, SegformerForSemanticSegmentation
@@ -63,6 +64,8 @@ class SegformerModule(pl.LightningModule):
         max_image_samples=5,
         temperature=1.0,
         label_smoothing=0.0,
+        lr_scheduler_patience=5,
+        lr_scheduler_cooldown=5,
         *args: Any,
         **kwargs: Any,
     ):
@@ -89,10 +92,14 @@ class SegformerModule(pl.LightningModule):
         self.temperature = temperature
         self.label_smoothing = label_smoothing
 
-        self.model = SegformerForSemanticSegmentation(self.configuration)
+        self.model = SegformerForSemanticSegmentation.from_pretrained(
+            f'nvidia/{variant.lower()}', config=self.configuration, ignore_mismatched_sizes=True
+        )
         self.lr = lr
+        self.lr_scheduler_patience = lr_scheduler_patience
+        self.lr_scheduler_cooldown = lr_scheduler_cooldown
 
-        self.images = {}
+        self.images: Dict[str, torch.Tensor] = {}
         self.metrics = {}
         for phase in ['train', 'val', 'test']:
             self.metrics[phase] = {
@@ -142,7 +149,7 @@ class SegformerModule(pl.LightningModule):
 
         self.metrics[phase]['loss'].update(loss.cpu())
         self.log(f'{phase}/batch/loss', loss, prog_bar=True)
-        self.register_sample_image(x, y, y_pred, phase)
+        self.register_sample_image(x.cpu(), y.cpu(), y_pred.cpu(), phase)
 
         for metric_name, metric in self.metrics[phase].items():
             if metric_name != 'loss':
@@ -153,7 +160,7 @@ class SegformerModule(pl.LightningModule):
     def register_sample_image(self, x: torch.Tensor, y: torch.Tensor, y_pred: torch.Tensor, phase: str):
         def compute_image():
             image = torch.cat([y, y_pred], dim=2)
-            image = self.color_codes.to(self.device)[image] / 255
+            image = self.color_codes.to(x.device)[image] / 255
             x_grid = self.image_grid(x)
             return torch.cat([x_grid, image], dim=2)
 
@@ -171,7 +178,7 @@ class SegformerModule(pl.LightningModule):
         n_rows = math.ceil(ch / n_cols)
         if n_rows * n_cols != ch:
             empty_channels = n_rows * n_cols - ch
-            x = torch.cat([x, torch.zeros((b, empty_channels, h, w))], dim=1)
+            x = torch.cat([x, torch.zeros((b, empty_channels, h, w), device=x.device)], dim=1)
             b, ch, h, w = x.size()
 
         x_grid = x.reshape(b, n_rows, n_cols, h, w).swapaxes(2, 3).reshape(b, h * n_rows, w * n_cols)
@@ -204,8 +211,8 @@ class SegformerModule(pl.LightningModule):
                 self.log(f'{phase}/epoch/{metric_name}', metric.compute())
             metric.reset()
 
-    def __publish_images(self, phase):
-        images = self.images[phase].cpu().numpy()
+    def __publish_images(self, phase: str):
+        images = torch.clamp(self.images[phase], min=0.0, max=1.0).cpu().numpy()
         for idx in range(min(images.shape[0], self.max_image_samples)):
             image = File.as_image(images[idx])
             self.logger.experiment[f'{phase}/sample/image_{idx}'].append(image)
@@ -213,4 +220,8 @@ class SegformerModule(pl.LightningModule):
         del self.images[phase]
 
     def configure_optimizers(self):
-        return Adam(self.parameters(), lr=self.lr)
+        optimizer = Adam(self.parameters(), lr=self.lr)
+        scheduler = ReduceLROnPlateau(
+            optimizer, patience=self.lr_scheduler_patience, cooldown=self.lr_scheduler_cooldown
+        )
+        return {'optimizer': optimizer, 'lr_scheduler': scheduler, 'monitor': 'val/epoch/loss'}

@@ -11,7 +11,7 @@ api_secret: ${oc.env:SENTINELHUB_API_SECRET}
 evalscript_dir: data/imagery
 
 # Image acquisition and preprocessing descriptor name.
-evalscript_name: imagery_v1
+evalscript_name: imagery_v2
 
 # Corine API ID
 cor_api_id: byoc-cbdba844-f86d-41dc-95ad-b3f7f12535e9

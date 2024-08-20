@@ -1,0 +1,57 @@
+# Number of imagery input channels
+num_channels: 13
+
+# SegFormer model variant: https://docs.python.org/3/library/logging.config.html
+variant: MiT-b0
+
+# Number of epochs spend during model training (-1 for infinite).
+max_epochs: -1
+
+# Initial model learning rate
+lr: 0.0005
+
+# Maximum number of input images in a training batch.
+# Limit depends on image shape (number of channels and dimensions) and possessed hardware.
+batch_size: 8
+
+# Tensor matrix multiplication precision: https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html
+matmul_precision: high
+
+# Number of workers used during dataset preparation.
+# The more, the faster the process will be and will consume more resources (CPU, IO)
+workers: 8
+
+# Number of images used to create segmentation progress visualisations.
+max_image_samples: 3
+
+# Used during model logits scaling: https://arxiv.org/pdf/1706.04599.pdf
+# > 1.0 yields softer labels distribution
+temperature: 1.0
+
+# Used to apply label smoothing during cross entropy loss calculation
+label_smoothing: 0.0
+
+# Frequency of sending logs to the underlying experiment tracking software.
+log_every_n_steps: 25
+
+# Gradient clipping value: https://pytorch-lightning.readthedocs.io/en/1.5.10/advanced/training_tricks.html#gradient-clipping
+gradient_clip_val: 0.5
+
+# Early stopping callback configuration: https://pytorch-lightning.readthedocs.io/en/1.5.10/common/early_stopping.html
+early_stopping:
+  patience: 5
+
+# Random data transformation (augmentation) configuration: https://albumentations.ai/
+augment:
+  horizontal_flip:
+    p: 0.25
+  vertical_flip:
+    p: 0.25
+  elastic_transform:
+    p: 0.25
+  coarse_dropout:
+    p: 0.25
+    max_holes: 15
+
+# Enable determining the optimal batch size and learning rate.
+enable_tuning: False
