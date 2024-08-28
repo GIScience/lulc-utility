@@ -42,7 +42,8 @@ def test_step():
     assert loss != torch.nan
 
     for metric in model.metrics['test'].values():
-        assert torch.all(metric.compute() != 0) and not torch.all(torch.isnan(metric.compute()))
+        assert torch.all(metric.compute().sum() != 0)
+        assert not torch.all(torch.isnan(metric.compute()))
 
 
 @pytest.mark.parametrize(

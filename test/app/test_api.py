@@ -1,7 +1,7 @@
 import io
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, Tuple
+from typing import Dict, Tuple, List
 
 import numpy as np
 import pytest
@@ -9,8 +9,8 @@ from fastapi.testclient import TestClient
 from onnxruntime import InferenceSession
 from tifffile import imread
 
-from app.api import app, hashable_osm_labels
-from lulc.data.label import LabelDescriptor
+from app.api import app
+from lulc.data.label import LabelDescriptor, HashableDict
 from lulc.data.tx.array import AdjustShape, NanToNum, Normalize, Stack
 from lulc.ops.imagery_store_operator import ImageryStore
 from lulc.ops.osm_operator import OhsomeOps
@@ -200,6 +200,11 @@ class TestOhsomeOps(OhsomeOps):
         return output
 
 
+def hashable_osm_labels(labels: List[LabelDescriptor]) -> HashableDict:
+    labels_dict = dict([(d.name, d.osm_filter) for d in labels if d.osm_filter is not None])
+    return HashableDict(labels_dict)
+
+
 @pytest.fixture
 def mocked_client():
     client = TestClient(app)
@@ -267,3 +272,20 @@ def test_segment_describe(mocked_client):
         'Road and rail networks and associated land',
         'Port areas',
     }
+
+
+def test_uncertainty_preview(mocked_client):
+    response = mocked_client.post('/uncertainty/preview', json=TEST_JSON_start_end)
+    assert response.status_code == 200
+    assert response.headers['content-type'] == 'image/png'
+    assert mocked_client.app.state.imagery_store.last_start_date == '2023-05-01'
+    assert mocked_client.app.state.imagery_store.last_end_date == '2023-06-01'
+
+
+def test_uncertainty_image(mocked_client):
+    response = mocked_client.post('/uncertainty', json=TEST_JSON_start_end)
+    response_data = imread(io.BytesIO(response.content))
+    assert response.status_code == 200
+    assert response.headers['content-type'] == 'image/geotiff'
+    assert response_data.shape == (498, 746, 2)
+    assert response_data.sum() > 0
