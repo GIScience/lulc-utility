@@ -94,14 +94,15 @@ Before training, please check whether you acquired access to the external resour
 and [SentinelHub](https://www.sentinel-hub.com/).
 The following environmental variables have to beset before running the training script:
 
-| ENV                       | Description                                              |
-|---------------------------|----------------------------------------------------------|
-| NEPTUNE_PROJECT_API_TOKEN | Token acquired from Neptune.ai dashboard (Get Token)     |
-| NEPTUNE_PROJECT_ID        | HeiGIT project id acquired from the Neptune.ai dashboard |
-| NEPTUNE_MODE              | Any of https://docs.neptune.ai/api/connection_modes/     |
-| SENTINELHUB_API_ID        | Id acquired from SentinelHub dashboard                   |
-| SENTINELHUB_API_SECRET    | Token acquired from SentinelHub dashboard                |
-| LOG_LEVEL                 | The minimum level for log messages                       |
+| ENV                       | Description                                                                                         |
+|---------------------------|-----------------------------------------------------------------------------------------------------|
+| MODEL_VERSION             | Name/Version of the model to use e.g. CA-LULC-21. Will use latest staging version if not specified. |
+| NEPTUNE_PROJECT_API_TOKEN | Token acquired from Neptune.ai dashboard (Get Token)                                                |
+| NEPTUNE_PROJECT_ID        | HeiGIT project id acquired from the Neptune.ai dashboard                                            |
+| NEPTUNE_MODE              | Any of https://docs.neptune.ai/api/connection_modes/                                                |
+| SENTINELHUB_API_ID        | Id acquired from SentinelHub dashboard                                                              |
+| SENTINELHUB_API_SECRET    | Token acquired from SentinelHub dashboard                                                           |
+| LOG_LEVEL                 | The minimum level for log messages                                                                  |
 
 The training process can be parametrized using relevant configuration files. Visit [`./conf/**/*.yaml`](conf) for
 reference.
