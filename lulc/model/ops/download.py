@@ -41,7 +41,7 @@ class NeptuneModelDownload:
         log.info(f'Utilizing model "{neptune_model_version_id}" with labels "{label_descriptor_version}"')
         return model_file, label_descriptor_version
 
-    def __fetch_latest_by_state(self, state='production'):
+    def __fetch_latest_by_state(self, state='staging'):
         project_id = neptune.init_project(
             project=self.__project,
             api_token=self.__api_token,
@@ -53,9 +53,9 @@ class NeptuneModelDownload:
             api_token=self.__api_token,
         )
         model_versions_df = model.fetch_model_versions_table().to_pandas()
-        production_models = model_versions_df[model_versions_df['sys/stage'] == state]
+        target_stage_models = model_versions_df[model_versions_df['sys/stage'] == state]
 
-        if production_models.empty:
+        if target_stage_models.empty:
             raise ValueError(f'No {state} model available in project {self.__project}')
 
-        return production_models.sort_values(by=['sys/creation_time'], ascending=False).iloc[0]['sys/id']
+        return target_stage_models.sort_values(by=['sys/creation_time'], ascending=False).iloc[0]['sys/id']
