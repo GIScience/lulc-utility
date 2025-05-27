@@ -136,8 +136,8 @@ python app/api.py
 The tool is also [Dockerised](Dockerfile). To start it, run the following commands
 
 ```shell
-docker build . --tag heigit/ca-lulc-utility:devel
-docker run --publish 8000:8000  --env-file .env heigit/ca-lulc-utility:devel
+docker build . --tag repo.heigit.org/climate-action/lulc-utility:devel
+docker run --rm --publish 8000:8000 --env-file .env repo.heigit.org/climate-action/lulc-utility:devel
 ```
 
 Then head to the link above. Populate the .env file using the [.env_template](.env_template).
