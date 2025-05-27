@@ -9,7 +9,7 @@ import yaml
 from fastapi import FastAPI
 from hydra import compose
 from matplotlib import pyplot as plt
-from onnxruntime import InferenceSession
+from onnxruntime import InferenceSession, SessionOptions
 
 from app.route import segment, health, uncertainty
 from lulc.data.label import resolve_corine_labels, resolve_osm_labels
@@ -59,7 +59,11 @@ async def configure_dependencies(app: FastAPI):
     app.state.corine_labels = resolve_corine_labels(Path(cfg.data.dir), label_descriptor_version)
     app.state.corine_cmap = dict(enumerate([d.color for d in app.state.corine_labels]))
 
-    app.state.inference_session = InferenceSession(str(onnx_model))
+    options = SessionOptions()
+    options.enable_mem_pattern = False
+    options.enable_cpu_mem_arena = False
+    options.enable_mem_reuse = False
+    app.state.inference_session = InferenceSession(str(onnx_model), sess_options=options)
 
     def tx(x):
         x = NanToNum(layers=['s1.tif', 's2.tif'], subset='imagery')(x)
