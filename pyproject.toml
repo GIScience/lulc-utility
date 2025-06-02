@@ -1,0 +1,21 @@
+[project]
+name = "lulc-utility"
+version = "1.1.1"
+description = "This utility provides various LULC classifications"
+authors = [
+    "Maciej Adamiak <maciej.adamiak@heigit.org>",
+    "Moritz Schott <moritz.schott@heigit.org>",
+]
+readme = "README.md"
+repository = "https://gitlab.heigit.org/climate-action/utilities/lulc-utility.git"
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.format]
+quote-style = "single"
+
+[tool.pytest.ini_options]
+markers = [
+    "external: marks tests that potentially make external API calls (deselect with '-m \"not external\"')",
+]

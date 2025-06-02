@@ -159,6 +159,15 @@ docker image push heigit/ca-lulc-utility:devel
 
 Make sure to install the pre-commit hooks before contributing to the project: `pre-commit install`.
 
+## Releasing a new utility version
+
+1. Update the [CHANGELOG.md](CHANGELOG.md).
+   It should already be up to date but give it one last read and update the heading above this upcoming release
+2. Decide on the new version number.
+   Please adhere to the [Semantic Versioning](https://semver.org/) scheme, based on the changes since the last release.
+3. Update the version attribute in the [pyproject.toml](pyproject.toml)
+4. Create a [release]((https://docs.gitlab.com/ee/user/project/releases/#create-a-release-in-the-releases-page)) on
+   GitLab, including a changelog
 
 [^1]: Note that for Neptune.ai, `debug` mode does not work. We suggest using `read-only` for testing.
 
