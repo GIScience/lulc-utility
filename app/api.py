@@ -5,12 +5,13 @@ from pathlib import Path
 
 import hydra
 import uvicorn
-import yaml
 from fastapi import FastAPI
 from hydra import compose
 from matplotlib import pyplot as plt
 from onnxruntime import InferenceSession, SessionOptions
 
+import app.logger  # noqa: F402
+from app.logger import log_level, log_config, onnx_log_level
 from app.route import segment, health, uncertainty
 from lulc.data.label import resolve_corine_labels, resolve_osm_labels
 from lulc.data.tx.array import Normalize, Stack, NanToNum, AdjustShape
@@ -20,8 +21,6 @@ from lulc.ops.osm_operator import OhsomeOps
 
 config_dir = os.getenv('LULC_UTILITY_APP_CONFIG_DIR', str(Path('conf').absolute()))
 
-log_level = os.getenv('LOG_LEVEL', 'INFO')
-log_config = f'{config_dir}/logging/app/logging.yaml'
 log = logging.getLogger(__name__)
 
 plt.switch_backend('agg')
@@ -63,9 +62,11 @@ async def configure_dependencies(app: FastAPI):
     options.enable_mem_pattern = False
     options.enable_cpu_mem_arena = False
     options.enable_mem_reuse = False
+    options.log_severity_level = onnx_log_level
     app.state.inference_session = InferenceSession(str(onnx_model), sess_options=options)
 
     def tx(x):
+        log.debug('Transforming imagery')
         x = NanToNum(layers=['s1.tif', 's2.tif'], subset='imagery')(x)
         x = Stack(subset='imagery')(x)
         x = Normalize(subset='imagery', mean=cfg.data.normalize.mean, std=cfg.data.normalize.std)(x)
@@ -85,10 +86,6 @@ app.include_router(uncertainty.router)
 app.include_router(health.router)
 
 if __name__ == '__main__':
-    logging.basicConfig(level=log_level.upper())
-    with open(log_config) as file:
-        logging.config.dictConfig(yaml.safe_load(file))
-
     log.info('Starting LULC Utility')
     uvicorn.run(
         'api:app',

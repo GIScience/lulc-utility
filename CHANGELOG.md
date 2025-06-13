@@ -7,10 +7,14 @@ and this project mostly adheres to [Semantic Versioning](https://semver.org/spec
 
 ## [Unreleased](https://gitlab.heigit.org/climate-action/utilities/lulc-utility/-/compare/1.1.1...main)
 
+### Fixed
+
+- initialise log level early and customise log config within `app.logger`
 
 ## [1.1.1](https://gitlab.heigit.org/climate-action/utilities/lulc-utility/-/releases/1.1.1) - 2025-06-02
 
 ### Fixed
+
 - memory leak in the api inference ([#82](https://gitlab.heigit.org/climate-action/utilities/lulc-utility/-/issues/82))
 
 
