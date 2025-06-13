@@ -126,6 +126,7 @@ e.g.: `LULC-SEG-2` and modify the [`conf/serve/local.yaml`](conf/serve/local.yam
 
 ```bash
 export PYTHONPATH="lulc:$PYTHONPATH"
+source .env
 python app/api.py
 ```
 
@@ -149,8 +150,8 @@ To run behind a proxy, you can configure the root path using the environment var
 To push a new version to [Docker Hub](https://hub.docker.com/orgs/heigit) run
 
 ```shell
-docker build . --tag heigit/ca-lulc-utility:devel
-docker image push heigit/ca-lulc-utility:devel
+docker build . --tag repo.heigit.org/climate-action/lulc-utility:devel
+docker image push repo.heigit.org/climate-action/lulc-utility:devel
 ```
 
 ## Development
