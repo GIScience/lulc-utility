@@ -90,7 +90,9 @@ class SentinelHubOperator(ImageryStore):
         bbox_width, bbox_height = bbox_to_dimensions(bbox, resolution=resolution)
 
         if bbox_width > 2500 or bbox_width > 2500:
-            raise OperatorValidationException('Area exceeds processing limit: 2500 px x 2500 px')
+            raise OperatorValidationException(
+                'Area (after edge correction buffer) exceeds processing limit: 2500 px x 2500 px'
+            )
 
         request = SentinelHubRequest(
             data_folder=str(self.data_folder),
@@ -153,7 +155,9 @@ class SentinelHubOperator(ImageryStore):
         end_date = f'{end_date}-01-01'
 
         if bbox_width > 2500 or bbox_height > 2500:
-            raise OperatorValidationException('Area exceeds processing limit: 2500 px x 2500 px')
+            raise OperatorValidationException(
+                'Area (after edge correction buffer) exceeds processing limit: 2500 px x 2500 px'
+            )
 
         request = SentinelHubRequest(
             data_folder=str(self.data_folder_cor),
