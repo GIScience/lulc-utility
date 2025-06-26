@@ -11,6 +11,11 @@ and this project mostly adheres to [Semantic Versioning](https://semver.org/spec
 
 - initialise log level early and customise log config within `app.logger`
 
+### Added
+
+- a debug message explaining that the input AOI is buffered and how big the new bounding box is (addresses confusion
+  in [#80](https://gitlab.heigit.org/climate-action/utilities/lulc-utility/-/issues/80))
+
 ## [1.1.1](https://gitlab.heigit.org/climate-action/utilities/lulc-utility/-/releases/1.1.1) - 2025-06-02
 
 ### Fixed

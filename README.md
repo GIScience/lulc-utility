@@ -126,7 +126,7 @@ e.g.: `LULC-SEG-2` and modify the [`conf/serve/local.yaml`](conf/serve/local.yam
 
 ```bash
 export PYTHONPATH="lulc:$PYTHONPATH"
-source .env
+export $(xargs <.env)
 python app/api.py
 ```
 

@@ -7,7 +7,7 @@ from fastapi import APIRouter
 from matplotlib import pyplot as plt
 from matplotlib.patches import Patch
 from pydantic import BaseModel, Field
-from sentinelhub import BBox, CRS as SCRS, to_utm_bbox
+from sentinelhub import BBox, CRS as SCRS, to_utm_bbox, bbox_to_dimensions
 from starlette.requests import Request
 from webcolors import rgb_to_hex
 
@@ -74,6 +74,11 @@ def __analyse(body: LulcWorkUnit, request: Request) -> ProcessingResult:
         to_utm_bbox(bbox).buffer(request.app.state.edge_smoothing_buffer, relative=False).transform(crs=SCRS.WGS84)
     )
     buffered_bbox = buffered_bbox.lower_left + buffered_bbox.upper_right
+    bbox_width, bbox_height = bbox_to_dimensions(BBox(bbox=buffered_bbox, crs=SCRS.WGS84), resolution=10)
+    log.debug(
+        f'Buffered input area by {request.app.state.edge_smoothing_buffer} metres to avoid edge effects.'
+        f'The dimensions of the new bounding box are ({bbox_width}x{bbox_height} px)'
+    )
 
     labels, (h, w) = analyse(
         imagery_store=request.app.state.imagery_store,
