@@ -27,6 +27,6 @@ ENV TRANSFORMERS_CACHE='/tmp'
 ENV PYTHONPATH "${PYTHONPATH}:/ca-lulc-utility/lulc"
 
 SHELL ["/bin/bash", "-c"]
-ENTRYPOINT source /ca-lulc-utility/venv/bin/activate && \
+ENTRYPOINT exec source /ca-lulc-utility/venv/bin/activate && \
            python app/api.py
 EXPOSE 8000
