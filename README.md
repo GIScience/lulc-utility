@@ -122,7 +122,10 @@ It will spawn a REST API locally to serve the predictions for the model trained 
 Before starting the API, please check whether the same environmental variables as in [Train](#train) are set [^1].
 To serve the machine learning model choose the desired model version from
 the [Model Registry](https://app.neptune.ai/o/HeiGIT/org/climate-action/models?shortId=CA-LULC&type=model),
-e.g.: `LULC-SEG-2` and modify the [`conf/serve/local.yaml`](conf/serve/local.yaml) file. Then start the application:
+e.g.: `LULC-SEG-2` and modify the [`conf/serve/local.yaml`](conf/serve/local.yaml) file.
+
+Copy the [`.env_template`](.env_template) file to `.env` and populate it.
+Then start the application:
 
 ```bash
 export PYTHONPATH="lulc:$PYTHONPATH"
@@ -134,20 +137,25 @@ python app/api.py
 
 ### Docker
 
-The tool is also [Dockerised](Dockerfile). To start it, run the following commands
+The tool is also [Dockerised](Dockerfile).
+Images are automatically built and deployed in the [CI-pipeline](.gitlab-ci.yml).
+
+In case you want to manually build and run locally (e.g. to test a new feature in development), execute
 
 ```shell
 docker build . --tag repo.heigit.org/climate-action/lulc-utility:devel
 docker run --rm --publish 8000:8000 --env-file .env repo.heigit.org/climate-action/lulc-utility:devel
 ```
 
-Then head to the link above. Populate the .env file using the [.env_template](.env_template).
+Note that this will overwrite any existing image with the same tag (i.e. the one you previously pulled from the Climate
+Action docker registry).
 
 To run behind a proxy, you can configure the root path using the environment variable `ROOT_PATH`.
 
 #### Deploy
 
-To push a new version to [Docker Hub](https://hub.docker.com/orgs/heigit) run
+To push a new version to [our docker registry](repo.heigit.org) (i.e. to overwrite the one on the Climate
+Action docker registry), run
 
 ```shell
 docker build . --tag repo.heigit.org/climate-action/lulc-utility:devel
