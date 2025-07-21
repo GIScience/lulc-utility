@@ -12,3 +12,11 @@ outputs/
 .idea/**
 **/.neptune/**
 .ruff_cache
+
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+.venv

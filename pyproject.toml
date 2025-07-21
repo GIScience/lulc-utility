@@ -8,6 +8,8 @@ authors = [
 ]
 readme = "README.md"
 repository = "https://gitlab.heigit.org/climate-action/utilities/lulc-utility.git"
+requires-python = ">=3.13"
+dependencies = []
 
 [tool.ruff]
 line-length = 120
