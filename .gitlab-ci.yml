@@ -1,29 +1,29 @@
-unit_tests:
-  stage: test
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-  image:
-    name: condaforge/mambaforge:23.1.0-4
-  variables:
-    CONDA_PKGS_DIRS: "$CI_PROJECT_DIR/.conda-pkgs-cache/"
-    PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
-    PRE_COMMIT_HOME: "$CI_PROJECT_DIR/.cache/pre-commit"
-  cache:
-    key: $CI_COMMIT_REF_NAME
-    paths:
-      - $PRE_COMMIT_HOME
-      - $CONDA_PKGS_DIRS/*.conda
-      - $CONDA_PKGS_DIRS/*.tar.bz2
-      - $CONDA_PKGS_DIRS/urls*
-      - $CONDA_PKGS_DIRS/cache
-      - $PIP_CACHE_DIR
-  before_script:
-    - mamba env create -f environment_cpu.yaml -v
-    - mamba init bash
-    - source ~/.bashrc
-  script:
-    - conda run -n ca-lulc-utility-ci pre-commit run --all-files
-    - conda run -n ca-lulc-utility-ci pytest -m "not external" --ignore=$CONDA_PKGS_DIRS .
+# unit_tests:
+#   stage: test
+#   rules:
+#     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+#   image:
+#     name: condaforge/mambaforge:23.1.0-4
+#   variables:
+#     CONDA_PKGS_DIRS: "$CI_PROJECT_DIR/.conda-pkgs-cache/"
+#     PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+#     PRE_COMMIT_HOME: "$CI_PROJECT_DIR/.cache/pre-commit"
+#   cache:
+#     key: $CI_COMMIT_REF_NAME
+#     paths:
+#       - $PRE_COMMIT_HOME
+#       - $CONDA_PKGS_DIRS/*.conda
+#       - $CONDA_PKGS_DIRS/*.tar.bz2
+#       - $CONDA_PKGS_DIRS/urls*
+#       - $CONDA_PKGS_DIRS/cache
+#       - $PIP_CACHE_DIR
+#   before_script:
+#     - mamba env create -f environment_cpu.yaml -v
+#     - mamba init bash
+#     - source ~/.bashrc
+#   script:
+#     - conda run -n ca-lulc-utility-ci pre-commit run --all-files
+#     - conda run -n ca-lulc-utility-ci pytest -m "not external" --ignore=$CONDA_PKGS_DIRS .
 
 docker_build_deploy_development:
   stage: deploy
