@@ -128,9 +128,7 @@ Copy the [`.env_template`](.env_template) file to `.env` and populate it.
 Then start the application:
 
 ```bash
-export PYTHONPATH="lulc:$PYTHONPATH"
-export $(xargs <.env)
-python app/api.py
+uv run --env-file .env python app/api.py
 ```
 
 > Go to [localhost:8000](http://localhost:8000/docs) to see the API in action.
