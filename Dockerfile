@@ -28,5 +28,5 @@ ENV PYTHONPATH "${PYTHONPATH}:/ca-lulc-utility/lulc"
 
 SHELL ["/bin/bash", "-c"]
 ENTRYPOINT source /ca-lulc-utility/venv/bin/activate && \
-           exec python app/api.py
+           python app/api.py
 EXPOSE 8000
