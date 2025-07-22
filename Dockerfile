@@ -1,4 +1,4 @@
-FROM condaforge/mambaforge:23.1.0-4 AS build
+FROM condaforge/mambaforge:24.9.2-0 AS build
 
 COPY environment_deploy.yaml environment.yaml
 
