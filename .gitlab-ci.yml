@@ -33,6 +33,7 @@ docker_build_deploy_development:
     - if: $CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == 'push'
   image: docker.io/docker:cli
   before_script:
+    - echo ${CI_DOCKER_TOKEN}
     - echo ${CI_DOCKER_TOKEN} | docker --config ~/ca_config login ${REGISTRY_URL} -u ${CI_DOCKER_USER} --password-stdin
     - docker --config ~/ca_config buildx create --use --name=kube --driver remote tcp://amd64-buildkit-service.ci-cd.svc:1234
   script:
