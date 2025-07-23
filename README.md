@@ -33,8 +33,11 @@ Preparing a country-specific model should take around two days (GPU: GeForce 309
 
 ## Install
 
-This Package uses [mamba](https://mamba.readthedocs.io/en/latest/installation.html)  for environment management.
-Run `mamba env create -f environment.yaml` to create the environment.
+This Package uses [uv](https://docs.astral.sh/uv/c) for environment and package management.
+Environments are automatically used and packages updated when you `uv run` commands, but you can also manually trigger
+package installation with `uv sync --group [group]`.
+
+You can also directly activate the environment with `source .venv/bin/activate` and then close it with `deactivate`.
 
 We highly suggest using a [CUDA](https://en.wikipedia.org/wiki/CUDA)-a compatible device to train the model.
 To check whether such a device is available on your machine, run `nvidia-smi` in the console.
@@ -128,7 +131,7 @@ Copy the [`.env_template`](.env_template) file to `.env` and populate it.
 Then start the application:
 
 ```bash
-uv run --env-file .env python app/api.py
+uv run --group deploy --env-file .env python app/api.py
 ```
 
 > Go to [localhost:8000](http://localhost:8000/docs) to see the API in action.

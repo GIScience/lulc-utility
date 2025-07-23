@@ -22,7 +22,7 @@ COPY data/example cache/sentinelhub/imagery_v1
 # Install the project source code separately from its dependencies for optimal layer caching
 COPY . /lulc-utility
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --no-dev
+    uv sync --locked --no-dev --group deploy
 
 ENV TRANSFORMERS_CACHE='/tmp'
 ENV PATH="/app/.venv/bin:$PATH"
