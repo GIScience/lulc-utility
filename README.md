@@ -107,6 +107,8 @@ The following environmental variables have to beset before running the training 
 | SENTINELHUB_API_SECRET    | Token acquired from SentinelHub dashboard                                                           |
 | LOG_LEVEL                 | The minimum level for log messages                                                                  |
 
+Any environment variables that include special characters must be wrapped in single quotation marks (`''`).
+
 The training process can be parametrized using relevant configuration files. Visit [`./conf/**/*.yaml`](conf) for
 reference.
 
