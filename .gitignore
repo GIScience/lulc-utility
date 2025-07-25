@@ -4,6 +4,7 @@ outputs/
 .tiff
 .tif
 .env
+.venv
 
 .pytest_cache
 **/lightning_logs
@@ -13,10 +14,3 @@ outputs/
 **/.neptune/**
 .ruff_cache
 
-*.py[oc]
-build/
-dist/
-wheels/
-*.egg-info
-
-.venv
