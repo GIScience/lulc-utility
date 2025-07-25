@@ -12,7 +12,7 @@ unit_tests:
       - $PRE_COMMIT_HOME
       - .venv
   before_script:
-    - uv sync --locked --all-groups --extra cpu
+    - uv sync --locked --all-groups
   script:
     - uv run pre-commit run --all-files
     - uv run pytest -m "not external"
