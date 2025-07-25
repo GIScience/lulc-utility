@@ -29,7 +29,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 ENV PATH="/app/.venv/bin:$PATH"
 
-# Reset the entrypoint, don't invoke `uv`
+# Reset the entrypoint and use CMD
 ENTRYPOINT []
 CMD ["uv", "run", "python", "app/api.py"]
 
