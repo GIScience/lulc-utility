@@ -1,4 +1,4 @@
-FROM ghcr.io/astral-sh/uv:debian
+FROM ghcr.io/astral-sh/uv:0.8-debian
 
 WORKDIR /lulc-utility
 
