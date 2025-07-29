@@ -33,8 +33,12 @@ Preparing a country-specific model should take around two days (GPU: GeForce 309
 
 ## Install
 
-This Package uses [mamba](https://mamba.readthedocs.io/en/latest/installation.html)  for environment management.
-Run `mamba env create -f environment.yaml` to create the environment.
+This Package uses [uv](https://docs.astral.sh/uv/c) for environment and package management.
+Environments are automatically used and packages updated when you `uv run` commands, but you can also manually trigger
+package installation with `uv sync --group [group]`.
+
+The `uv run` commands automatically invoke the environment, but you can also directly activate it with
+`source .venv/bin/activate` (and close it like normal with `deactivate`).
 
 We highly suggest using a [CUDA](https://en.wikipedia.org/wiki/CUDA)-a compatible device to train the model.
 To check whether such a device is available on your machine, run `nvidia-smi` in the console.
@@ -47,7 +51,7 @@ For the description of each hook visit the documentation of:
 - [git pre-commit hooks](https://github.com/pre-commit/pre-commit-hooks)
 - [ruff pre-commit hooks](https://github.com/astral-sh/ruff-pre-commit)
 
-Run `pre commit install` to activate them.
+Run `uv run pre-commit install` to activate them.
 
 ## Data
 
@@ -59,8 +63,7 @@ To automatically prepare the descriptor set relevant area parameters
 in [`conf/area_descriptor.yaml`](conf/area_descriptor.yaml) and run the following command:
 
 ```bash
-export PYTHONPATH="lulc:$PYTHONPATH"
-python lulc/compute_area_descriptor.py
+uv run python lulc/compute_area_descriptor.py
 ```
 
 ### Normalization
@@ -73,8 +76,7 @@ Normalisation parameters can be set in the [`conf/data/*.yaml`](conf/data) (`dat
 To recalculate a reasonable set of values for new datasets, one needs to run the following script:
 
 ```bash
-export PYTHONPATH="lulc:$PYTHONPATH"
-python lulc/calculate_dataset_statistics.py
+uv run --env-file .env python lulc/calculate_dataset_statistics.py
 ```
 
 ### Class weights
@@ -104,6 +106,8 @@ The following environmental variables have to beset before running the training 
 | SENTINELHUB_API_SECRET    | Token acquired from SentinelHub dashboard                                                           |
 | LOG_LEVEL                 | The minimum level for log messages                                                                  |
 
+Any environment variables that include special characters must be wrapped in single quotation marks (`''`).
+
 The training process can be parametrized using relevant configuration files. Visit [`./conf/**/*.yaml`](conf) for
 reference.
 
@@ -112,8 +116,7 @@ reference.
 Training can be run with the following commands (project root as working DIR):
 
 ```bash
-export PYTHONPATH="lulc:$PYTHONPATH"
-python lulc/train.py
+uv run --env-file .env python lulc/train.py
 ```
 
 ## Serve
@@ -128,9 +131,7 @@ Copy the [`.env_template`](.env_template) file to `.env` and populate it.
 Then start the application:
 
 ```bash
-export PYTHONPATH="lulc:$PYTHONPATH"
-export $(xargs <.env)
-python app/api.py
+uv run --group deploy --no-dev --env-file .env python app/api.py
 ```
 
 > Go to [localhost:8000](http://localhost:8000/docs) to see the API in action.
@@ -166,7 +167,7 @@ docker image push repo.heigit.org/climate-action/lulc-utility:devel
 
 ### Linting
 
-Make sure to install the pre-commit hooks before contributing to the project: `pre-commit install`.
+Make sure to install the pre-commit hooks before contributing to the project: `uv run pre-commit install`.
 
 ## Releasing a new utility version
 
