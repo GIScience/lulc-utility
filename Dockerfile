@@ -1,32 +1,34 @@
-FROM condaforge/mambaforge:23.1.0-4 AS build
+FROM ghcr.io/astral-sh/uv:0.8-debian
 
-COPY environment_deploy.yaml environment.yaml
+WORKDIR /lulc-utility
 
-RUN mamba env create -f environment.yaml && \
-    mamba install -y -c conda-forge conda-pack && \
-    conda-pack -f --ignore-missing-files -n ca-lulc-utility-deploy -o /tmp/env.tar && \
-    mkdir /venv && \
-    cd /venv && \
-    tar xf /tmp/env.tar && \
-    rm /tmp/env.tar  && \
-    /venv/bin/conda-unpack && \
-    mamba clean --all --yes
+# Enable bytecode compilation for faster application startups
+ENV UV_COMPILE_BYTECODE=1
 
-FROM debian:buster AS runtime
+# Copy from the cache instead of linking since it's a mounted volume
+ENV UV_LINK_MODE=copy
 
-WORKDIR /ca-lulc-utility
-COPY --from=build /venv /ca-lulc-utility/venv
+# Temporarily mount uv.lock and pyproject.toml as we don't need them in runtime and they trigger package downloads
+# on startup if included in the filesystem
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --locked --no-dev --group deploy --no-install-project
 
+COPY README.md README.md
 COPY app app
 COPY conf conf
 COPY data data
 COPY lulc lulc
-COPY data/example cache/sentinelhub/imagery_v1
 
-ENV TRANSFORMERS_CACHE='/tmp'
-ENV PYTHONPATH "${PYTHONPATH}:/ca-lulc-utility/lulc"
+# Install the project source code separately from its dependencies for optimal layer caching
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --locked --no-dev --group deploy
 
-SHELL ["/bin/bash", "-c"]
-ENTRYPOINT source /ca-lulc-utility/venv/bin/activate && \
-           python app/api.py
+ENV PATH="/app/.venv/bin:$PATH"
+
+ENTRYPOINT ["uv", "run", "python", "app/api.py"]
+
 EXPOSE 8000

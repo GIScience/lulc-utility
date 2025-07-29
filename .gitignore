@@ -4,6 +4,7 @@ outputs/
 .tiff
 .tif
 .env
+.venv
 
 .pytest_cache
 **/lightning_logs
@@ -12,3 +13,4 @@ outputs/
 .idea/**
 **/.neptune/**
 .ruff_cache
+
