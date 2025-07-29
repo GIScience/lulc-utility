@@ -29,8 +29,6 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 ENV PATH="/app/.venv/bin:$PATH"
 
-# Reset the entrypoint and use CMD
-ENTRYPOINT []
-CMD ["uv", "run", "python", "app/api.py"]
+ENTRYPOINT ["uv", "run", "python", "app/api.py"]
 
 EXPOSE 8000
