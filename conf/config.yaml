@@ -1,6 +1,6 @@
 defaults:
   - _self_
-  - data: de_v1
+  - data: d12_regk_v2
   - model: v1
   - serve: local
   - imagery: sentinel_hub
