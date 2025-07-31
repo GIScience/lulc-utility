@@ -13,7 +13,9 @@ and this project mostly adheres to [Semantic Versioning](https://semver.org/spec
 
 ### Changed
 
-- changed environment and dependency management from `conda` to [`uv`](https://docs.astral.sh/uv/)
+- environment and dependency management from `conda` to [`uv`](https://docs.astral.sh/uv/)
+- area descriptor is now file-based or using OSM boundaries instead of NUTS area
+  definitions ([#59](https://gitlab.heigit.org/climate-action/utilities/lulc-utility/-/issues/59))
 
 ### Added
 
