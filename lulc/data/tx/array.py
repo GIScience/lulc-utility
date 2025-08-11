@@ -74,6 +74,16 @@ class NanToNum(Tx):
         return sample
 
 
+class ToDtype(Tx):
+    def __init__(self, subset: str = 'x', dtype=np.float32):
+        super().__init__(subset)
+        self.to_dtype = dtype
+
+    def __call__(self, sample):
+        sample[self.subset] = sample[self.subset].astype(self.to_dtype)
+        return sample
+
+
 class Normalize(Tx):
     def __init__(self, mean: List[float], std: List[float], subset='x'):
         super().__init__(subset)

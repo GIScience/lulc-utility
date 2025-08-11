@@ -1,5 +1,6 @@
 cache/**
 __pycache__/
+**/.ipynb_checkpoints/**
 outputs/
 .tiff
 .tif
@@ -11,6 +12,8 @@ outputs/
 **/ohsome_log
 
 .idea/**
+.vscode/**
 **/.neptune/**
 .ruff_cache
 
+playground.py

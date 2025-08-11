@@ -4,17 +4,25 @@ area:
   # If both are provided, the file will be prioritized over the name.
 
   # Option 1. File: AOI can be provided as a filepath, with an optional id column
-  aoi_file: data/regierungsbezirk_karlsruhe.geojson
+#  aoi_file: data/regierungsbezirk_karlsruhe.geojson
+  aoi_file: data/sample_study_cities_Poland_Germany.geojson
   aoi_id_col: osm_id
 
   # Optionally, provide ids to filter the aoi_file by (will be ignored if not present in the aoi_file)
   target_aoi_ids:
-    - 285864  # Heidelberg
-    # - 62577  # Rhein-Neckar-Kreis
-    # - 62691  # Mannheim
+    - 285864  # Heidelberg Germany
+    # - 62518  # Karlsruhe Germany
+    # - 62649  # Leipzig Germany
+    # - 62691  # Mannheim Germany
+    # - 163256  # Siegen Germany
+    # - 336075  # Warszawa Poland
+    # - 2633730  # Chełmża Poland
+    # - 2768921  # Kraków Poland
+    # - 2793104  # Stuttgart Germany
+    # - 2907537  # Łódź Poland
+    # - 3107056  # Łęczna Poland
 
-  # Option 2. Name: AOI can be provided as an aoi_name which will be geolocated through OSM
-  aoi_name: Heidelberg
+#    - 62577  # Rhein-Neckar-Kreis
 
   # Determine the initial grid of the split [osm, utm]
   # More: https://sentinelhub-py.readthedocs.io/en/latest/examples/large_area_utilities.html

@@ -40,7 +40,7 @@ async def configure_dependencies(app: FastAPI):
     hydra.initialize_config_dir(config_dir=config_dir, version_base=None)
     cfg = compose(config_name='config')
 
-    app.state.imagery_store = resolve_imagery_store(cfg.imagery, cache_dir=Path(cfg.cache.dir))
+    app.state.imagery_store, tr = resolve_imagery_store(cfg.imagery, cache_dir=Path(cfg.cache.dir))
     app.state.osm = OhsomeOps(cache_dir=Path(cfg.cache.dir))
 
     registry = NeptuneModelDownload(

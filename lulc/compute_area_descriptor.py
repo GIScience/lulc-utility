@@ -28,6 +28,11 @@ def compute_area_descriptor(cfg: DictConfig) -> None:
     """
     Compute the area data descriptor by splitting the AOI into a grid.
 
+    Saves to `cfg.area.output_dir`:
+     - a csv containing a GeoDataFrame representation of the split (gridded) area, with a copy of each cell for each
+       timeframe included in cfg.area_descriptor.timeframes
+     - a png visualisation of the split (gridded) area
+
     :param cfg: loaded area descriptor configuration
     :return: The area descriptor is saved as a CSV file and a visualization is generated as a PNG file.
     """
@@ -36,6 +41,8 @@ def compute_area_descriptor(cfg: DictConfig) -> None:
     log.info('Retrieving area')
     land_mask = gpd.read_file('data/world_generalized.geojson')
     aoi_source, out_name = retrieve_area(cfg)
+
+    log.info(f'Computing area descriptors for {out_name}')
     aoi_id_col = getattr(cfg.area, 'aoi_id_col', 'osm_id')
 
     targets_specified = False

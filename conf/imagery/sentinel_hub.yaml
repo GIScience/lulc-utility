@@ -13,6 +13,9 @@ evalscript_dir: data/imagery
 # Image acquisition and preprocessing descriptor name.
 evalscript_name: imagery_v2
 
+# Resolution (in metres) of the tiles
+resolution: 10
+
 # Corine API ID
 cor_api_id: byoc-cbdba844-f86d-41dc-95ad-b3f7f12535e9
 

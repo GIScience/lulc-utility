@@ -1,0 +1,28 @@
+osm:
+  - name: sealed_soil
+    osm_filter:
+     (
+        surface in (impervious, paved, asphalt, concrete, metal, paving_stones, tiles)
+
+        or building=*
+
+        or highway in (motorway, motorway_link, trunk, trunk_link, primary, primary_link, secondary, secondary_link,
+        tertiary, tertiary_link, unclassified, residential, living_street, service, pedestrian, busway, bus_guideway, raceway)
+
+        or parking in (multi-storey, garage, rooftop, lane, street_side, underground)
+
+        or landuse in (industrial, commercial, retail)
+
+        or amenity in (bank, bus_station, cinema, casino, supermarket, theatre, library, fuel, clinic, pharmacy)
+
+        or aeroway in (runway, taxiway, helipad, terminal, hangar)
+
+        or man_made in (container_terminal, fuel_pump, fuel_station, storage_tank)
+      )
+    geometry_types:
+      - 'polygon'
+      - 'line'
+      - 'point'
+    color_code: '#B1B1B1'
+    description: 'Areas that have been covered by an impermeable material, such as concrete or asphalt etc.'
+

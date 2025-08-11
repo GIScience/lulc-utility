@@ -5,9 +5,9 @@ crop:
   height: 1024
   width: 1024
 descriptor:
-  area:
-  label: v3
-class_weights:
+  area: sample_study_cities_Poland_Germany
+  label: soil_sealing_v1
+class_weights: null
 normalize:
-  mean:
-  std:
+  mean: null
+  std: null

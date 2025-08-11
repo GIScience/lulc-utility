@@ -1,0 +1,20 @@
+operator: minio
+
+# MinIO configuration
+minio_platform:
+  host: ${oc.env:MINIO_HOST}
+  port: ${oc.env:MINIO_PORT}
+  secure: ${oc.env:MINIO_SECURE}
+  access_key: ${oc.env:MINIO_ACCESS_KEY}
+  secret_key: ${oc.env:MINIO_SECRET_KEY}
+  bucket: ${oc.env:MINIO_BUCKET}
+
+tile_dir: by_country/germany/global_quarterly_2024q2_mosaic
+
+# Resolution (in metres) of the tiles
+resolution: 3
+
+# Object name/path in minio for the tile specification file
+# If you prefer to use a local file instead of one on minio, give the absolute path and prefix with `file:`
+# For example, `tile_spec_path: file:/home/user/planet-data/planet_quads.parquet`
+tile_spec_path: file:/home/dgatland/projects/climate-action/research-and-development/planet_data/planet_quads.parquet

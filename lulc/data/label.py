@@ -34,6 +34,12 @@ class LabelDescriptor(BaseModel):
         examples=['landuse=forest or natural=wood'],
         default=None,
     )
+    geometry_types: Optional[List[str]] = Field(
+        title='OSM Filter Geometry Types',
+        description='The OSM filter statement will extract only elements of the provided geometry types',
+        examples=['polygon', 'line', 'point'],
+        default=['polygon'],
+    )
     raster_value: int = Field(
         title='Raster Value',
         description='The numeric value in the raster that represents this label.',

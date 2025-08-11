@@ -19,8 +19,13 @@ and this project mostly adheres to [Semantic Versioning](https://semver.org/spec
 
 ### Added
 
+- new label file for sealed areas based on OSM tags.
 - a debug message explaining that the input AOI is buffered and how big the new bounding box is (addresses confusion
   in [#80](https://gitlab.heigit.org/climate-action/utilities/lulc-utility/-/issues/80))
+- new imagery store data loaders to read images from a directory path or from minio
+- development script `export_osm_labels` to create a single raster file containing the ground truth labels based on the
+  current osm filter
+- ability to include line or point geometries in the osm filter
 
 ## [1.1.1](https://gitlab.heigit.org/climate-action/utilities/lulc-utility/-/releases/1.1.1) - 2025-06-02
 
