@@ -1,0 +1,14 @@
+operator: file_dir
+
+# Directory containing raw RGB or RGBA images
+#tile_dir: ~/projects/climate-action/research-and-development/planet_data/quads
+tile_dir: ~/sds/sd17f001/sukanya/roads/satellite_data/planet_data/global_quarterly_2024q2_mosaic/quads
+
+# Resolution (in metres) of the tiles
+resolution: 3
+
+# Parquet file defining the tiled images, including at least the following columns:
+# - bbox: [xmin, ymin, xmax, ymax] coordinates of each tile, in WGS84 coordinates
+# - id: the filename identifier for each tile, which can be resolved as: `f'{tile_dir}/{id}.tiff'`
+tile_spec_path: ~/projects/climate-action/research-and-development/planet_data/planet_quads.parquet
+

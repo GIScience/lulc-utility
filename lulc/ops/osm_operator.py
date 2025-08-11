@@ -65,10 +65,11 @@ class OhsomeOps:
         raster_data = data_folder / f'{bbox_id}.tiff'
 
         if not raster_data.exists():
+            filter_geometry = ' or '.join([f'geometry:{geom}' for geom in label.geometry_types])
             vector_data = self.ohsome.elements.geometry.post(
                 bboxes=bbox,
                 time=time,
-                filter=f'({label.osm_filter}) and geometry:polygon',
+                filter=f'({label.osm_filter}) and ({filter_geometry})',
             ).as_dataframe()
             extent_data = gpd.GeoDataFrame(
                 index=['extent'],

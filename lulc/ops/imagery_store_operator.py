@@ -1,14 +1,24 @@
 import logging
 import logging as rio_logging
 import shutil
+import warnings
 from abc import ABC, abstractmethod
 from datetime import datetime
+from io import BytesIO
 from pathlib import Path
 from tarfile import ReadError
-from typing import Dict, Tuple
+from typing import Callable, Dict, List, Tuple
 
+import geopandas as gpd
 import numpy as np
+import pandas as pd
+import rasterio
+import shapely
+from minio import Minio, S3Error
 from omegaconf import DictConfig
+from pyproj import Transformer
+from rasterio.mask import mask
+from rasterio.merge import merge
 from sentinelhub import (
     CRS,
     BBox,
@@ -20,11 +30,16 @@ from sentinelhub import (
     SHConfig,
     bbox_to_dimensions,
 )
+from sentinelhub.exceptions import SHRateLimitWarning
 
+from lulc.data.tx.array import NanToNum, ReclassifyMerge, Stack, ToDtype
 from lulc.ops.exception import OperatorInteractionException, OperatorValidationException
 
 log = logging.getLogger(__name__)
 rio_logging.getLogger('rasterio._filepath').setLevel(logging.ERROR)
+
+# Upgrade SentinelHub rate limit warning to an error
+warnings.filterwarnings('error', category=SHRateLimitWarning)
 
 
 class ImageryStore(ABC):
@@ -145,6 +160,9 @@ class SentinelHubOperator(ImageryStore):
         end_date: str,
         resolution: int = 10,
     ) -> Tuple[np.ndarray, tuple[int, int]]:
+        """
+        Get LULC classification from the Corine Land Cover inventory.
+        """
         bbox = BBox(bbox=area_coords, crs=CRS.WGS84)
         bbox_width, bbox_height = bbox_to_dimensions(bbox, resolution=resolution)
 
@@ -191,9 +209,171 @@ class SentinelHubOperator(ImageryStore):
             )
 
 
-def resolve_imagery_store(cfg: DictConfig, cache_dir: Path) -> ImageryStore:
+class FileOperator(ImageryStore):
+    def __init__(self, tile_spec_path: Path, tile_dir: Path):
+        """
+        Initialise an imagery store for images saved in a local file directory.
+
+        :param tile_dir: folder location containing tiled images
+        :param tile_spec_path: path to parquet file describing the bounding boxes of the tiled images with an
+        'id' column to resolve the filename (`tile_dir / f'{id}.tiff'`)
+        """
+        self.tile_dir = tile_dir
+        self._load_tile_specification(path=Path(tile_spec_path).expanduser())
+
+    def _load_tile_specification(self, path: Path) -> None:
+        tile_specification = pd.read_parquet(path, engine='pyarrow')
+        tile_specification['bbox'] = tile_specification['bbox'].apply(lambda b: shapely.Polygon.from_bounds(*b))
+        tile_specification = gpd.GeoDataFrame(tile_specification, geometry='bbox')
+
+        self.tile_specification = tile_specification
+        self.sindex = self.tile_specification.sindex
+
+        return
+
+    def open_tiles(self, tiles: List[str]) -> List[rasterio.DatasetReader]:
+        image_paths = [self.tile_dir / f'{qid}.tiff' for qid in tiles]
+
+        sources = []
+        for file in image_paths:
+            if file.exists():
+                src = rasterio.open(file)
+                sources.append(src)
+
+        return sources
+
+    def imagery(
+        self,
+        area_coords: Tuple[float, float, float, float],
+        start_date: str = '',
+        end_date: str = '',
+        resolution: int = 10,
+    ) -> Tuple[Dict[str, np.ndarray], Tuple[int, int]]:
+        return _create_image_from_tiles(
+            area_coords=area_coords,
+            tile_specification=self.tile_specification,
+            sindex=self.sindex,
+            tile_reader=self.open_tiles,
+        )
+
+
+class MinioOperator(ImageryStore):
+    def __init__(self, minio_cfg: DictConfig, tile_spec_path: str, tile_dir: str):
+        """
+        Initialise an imagery store for images saved in MinIO.
+
+        :param minio_cfg: configuration for the minio connection, including: host, port, access_key, secret_key, bucket
+        :param tile_spec_path: the location of the tile specification parquet file within the bucket
+        :param tile_dir: the location within the bucket containing the tiled images
+        """
+        # We don't initialise the client itself because that prevents us from deep copying objects containing this
+        # imagery store, including from saving model hyperparameters if the dataset uses this imagery store.
+        self.client_config = {
+            'endpoint': f'{minio_cfg.host}:{minio_cfg.port}',
+            'access_key': minio_cfg.access_key,
+            'secret_key': minio_cfg.secret_key,
+            'secure': True if minio_cfg.secure.lower() == 'true' else False,
+        }
+        self.bucket = minio_cfg.bucket
+        self.tile_dir = tile_dir
+
+        self._load_tile_specification(tile_spec_path)
+
+    def _load_tile_specification(self, obj_path: str) -> None:
+        if obj_path.startswith('file:'):
+            tile_specification = pd.read_parquet(obj_path.replace('file:', ''), engine='pyarrow')
+        else:
+            client = Minio(**self.client_config)
+            with client.get_object(bucket_name=self.bucket, object_name=obj_path) as response_stream:
+                parquet_bytes = BytesIO(response_stream.read())
+                tile_specification = pd.read_parquet(parquet_bytes)
+
+        tile_specification['bbox'] = tile_specification['bbox'].apply(lambda b: shapely.Polygon.from_bounds(*b))
+        self.tile_specification = gpd.GeoDataFrame(tile_specification, geometry='bbox')
+        self.sindex = self.tile_specification.sindex
+
+        return
+
+    def open_tiles(self, tiles: List[str]) -> List[rasterio.DatasetReader]:
+        client = Minio(**self.client_config)
+        sources = []
+        for tile in tiles:
+            try:
+                with client.get_object(
+                    bucket_name=self.bucket, object_name=f'{self.tile_dir}/{tile}.tiff'
+                ) as response_stream:
+                    raster_bytes = BytesIO(response_stream.read())
+                    src = rasterio.open(raster_bytes)
+                    sources.append(src)
+            except S3Error as exc:
+                if exc.code != 'NoSuchKey':
+                    log.warning('Error reading object from MinIO', exc_info=exc)
+                    raise exc
+
+        return sources
+
+    def imagery(
+        self,
+        area_coords: Tuple[float, float, float, float],
+        start_date: str = '',
+        end_date: str = '',
+        resolution: int = 10,
+    ) -> Tuple[Dict[str, np.ndarray], Tuple[int, int]]:
+        return _create_image_from_tiles(
+            area_coords=area_coords,
+            tile_specification=self.tile_specification,
+            sindex=self.sindex,
+            tile_reader=self.open_tiles,
+        )
+
+
+def _create_image_from_tiles(
+    area_coords: Tuple[float, float, float, float],
+    tile_specification: gpd.GeoDataFrame,
+    sindex: gpd.sindex.BaseSpatialIndex,
+    tile_reader: Callable,
+) -> Tuple[Dict[str, np.ndarray], Tuple[int, int]]:
+    # Get tiles that cover the area_coords
+    possible_matches_idx = list(sindex.intersection(area_coords))
+    intersecting_tiles = tile_specification.iloc[possible_matches_idx]['id'].tolist()
+
+    # Read tiles
+    sources = tile_reader(intersecting_tiles)
+    if not sources:
+        raise RuntimeError(f'No valid sources found for {intersecting_tiles}')
+
+    # Merge and clip tiles to the area_coords
+    crs_transformer = Transformer.from_crs(4326, sources[0].crs)
+    xmin, ymin = crs_transformer.transform(area_coords[1], area_coords[0])
+    xmax, ymax = crs_transformer.transform(area_coords[3], area_coords[2])
+
+    if len(sources) == 1:
+        mosaic, _ = mask(
+            dataset=sources[0],
+            shapes=[shapely.Polygon.from_bounds(xmin, ymin, xmax, ymax)],
+            all_touched=True,
+            crop=True,
+        )
+    else:
+        mosaic, _ = merge(sources, bounds=(xmin, ymin, xmax, ymax))
+
+    # Rearrange the array and drop the "A" channel (from RGBA)
+    mosaic = np.transpose(mosaic, (1, 2, 0))  # assuming it is (z, x, y) - transpose to (x, y, z)
+    if mosaic.shape[2] == 4:
+        vals = np.unique(mosaic[:, :, 3]).tolist()
+        # Should actually only allow 255, but https://github.com/rasterio/rasterio/issues/2986
+        assert set(vals) <= {0, 255}, (
+            'The image has 4 channels. '
+            f'Assuming RGBA format, the 4th channel should only contain 255, but it contains: {vals}'
+        )
+        mosaic = np.delete(mosaic, obj=3, axis=2)
+
+    return {'rgb': mosaic}, mosaic.shape[:2]
+
+
+def resolve_imagery_store(cfg: DictConfig, cache_dir: Path = None) -> ImageryStore:
     if cfg.operator == 'sentinel_hub':
-        return SentinelHubOperator(
+        imagery_store = SentinelHubOperator(
             cfg.api_id,
             cfg.api_secret,
             Path(cfg.evalscript_dir),
@@ -205,5 +385,28 @@ def resolve_imagery_store(cfg: DictConfig, cache_dir: Path) -> ImageryStore:
             cfg.corine_years,
             cache_dir=cache_dir / 'imagery',
         )
+        transforms = [
+            NanToNum(layers=['s1.tif', 's2.tif']),
+            Stack(),
+            ReclassifyMerge(),
+        ]
+
+    elif cfg.operator in ('file_dir', 'minio'):
+        transforms = [
+            NanToNum(layers=['rgb']),
+            Stack(),
+            ReclassifyMerge(),
+            ToDtype(dtype=np.float32),
+        ]
+
+        if cfg.operator == 'file_dir':
+            imagery_store = FileOperator(
+                tile_spec_path=Path(cfg.tile_spec_path).expanduser(), tile_dir=Path(cfg.tile_dir).expanduser()
+            )
+        else:
+            imagery_store = MinioOperator(cfg.minio_platform, tile_spec_path=cfg.tile_spec_path, tile_dir=cfg.tile_dir)
+
     else:
         raise ValueError(f'Cannot resolve imagery operator {cfg.operator}')
+
+    return imagery_store, transforms

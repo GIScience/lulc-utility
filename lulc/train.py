@@ -19,7 +19,7 @@ from torchvision import transforms
 
 from lulc.data.dataset import AreaDataset
 from lulc.data.module import AreaDataModule
-from lulc.data.tx.array import Normalize, Stack, ReclassifyMerge, NanToNum
+from lulc.data.tx.array import Normalize
 from lulc.model.model import SegformerModule
 from lulc.model.ops.registry import NeptuneModelRegistry
 from lulc.monitoring.energy import EnergyContext
@@ -58,7 +58,7 @@ def train(cfg: DictConfig) -> None:
     neptune_logger.experiment['data/imagery'] = cfg.imagery.operator
 
     log.info(f'Configuring remote sensing imagery store: {cfg.imagery.operator}')
-    imagery_store = resolve_imagery_store(cfg.imagery, cache_dir=Path(cfg.cache.dir))
+    imagery_store, tr = resolve_imagery_store(cfg.imagery, cache_dir=Path(cfg.cache.dir))
 
     with EnergyContext(neptune_logger.experiment, enable_tracking=cfg.environment.energy_tracker) as energy_context:
         log.info(f'Initializing dataset (area: {cfg.data.descriptor.area}, label: {cfg.data.descriptor.label})')
@@ -67,14 +67,13 @@ def train(cfg: DictConfig) -> None:
             area_descriptor_ver=cfg.data.descriptor.area,
             label_descriptor_ver=cfg.data.descriptor.label,
             imagery_store=imagery_store,
+            resolution=cfg.imagery.resolution,
             data_dir=Path(cfg.data.dir),
             cache_dir=Path(cfg.cache.dir),
             cache_items=cfg.cache.apply,
             deterministic_tx=transforms.Compose(
-                [
-                    NanToNum(layers=['s1.tif', 's2.tif']),
-                    Stack(),
-                    ReclassifyMerge(),
+                tr
+                + [
                     Normalize(mean=cfg.data.normalize.mean, std=cfg.data.normalize.std),
                 ]
             ),
@@ -110,7 +109,7 @@ def train(cfg: DictConfig) -> None:
         )
         model = SegformerModule(**params)
 
-        log.info(f'Training model for {cfg.model.max_epochs} epochs')
+        log.info(f'Training model for {"unlimited" if cfg.model.max_epochs == -1 else cfg.model.max_epochs} epochs')
         energy_context.record('train')
 
         early_stopping = EarlyStopping(monitor='val/epoch/loss', patience=cfg.model.early_stopping.patience)
