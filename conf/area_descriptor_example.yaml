@@ -1,28 +1,32 @@
 area:
-  aoi_file: data/training_cities_poland_germany.geojson
-  aoi_name: training_cities_poland_germany
+  # There are two ways to provide the area of interest (AOI) for the dataset computation: as a file or as a name
+  # corresponding to an OSM boundary.
+  # If both are provided, the file will be prioritized over the name.
+
+  # Option 1. File: AOI can be provided as a filepath, with an optional id column
+  aoi_file: data/regierungsbezirk_karlsruhe.geojson
   aoi_id_col: osm_id
 
   # Optionally, provide ids to filter the aoi_file by (will be ignored if not present in the aoi_file)
   target_aoi_ids:
-    - 62518  # Karlsruhe Germany - mid size city, good for ground truthing
-    - 285864  # Heidelberg Germany - mid size historic architecture, good for ground truthing
-    - 2793104  # Stuttgart Germany - big, dense city
-    - 62649  # Leipzig Germany -  big city, Eastern Germany
-    - 163256  # Siegen Germany - smaller city
-    - 336075  # Warszawa Poland - big capital city
-    - 2633730  # Chełmża Poland - small urban town
-    - 2768921  # Kraków Poland - big city, historic architecture
-    - 2907537  # Łódź Poland - main study area, big city, good for ground truthing
-    - 3107056  # Łęczna Poland - small city
+    - 285864  # Heidelberg
+    # - 62577  # Rhein-Neckar-Kreis
+    # - 62691  # Mannheim
+
+  # Option 2. Name: AOI can be provided as an aoi_name which will be geolocated through OSM
+  aoi_name: Heidelberg
 
   # Determine the initial grid of the split [osm, utm]
   # More: https://sentinelhub-py.readthedocs.io/en/latest/examples/large_area_utilities.html
   split_mode: osm
 
-  # N/A: currently dictated by the planet data dir that we provide in the imagery store configuration
+  # TODO: note that this must align with what is available from the relevant imagery store
   # Research timespans. Only data from the declared period will be used during dataset computation
   timeframes:
+    # - [ 2023-05-01, 2023-05-31 ]
+    # - [ 2023-06-01, 2023-06-30 ]
+    # - [ 2023-07-01, 2023-07-31 ]
+    # - [ 2023-08-01, 2023-08-30 ]
     - [ 2023-09-01, 2023-09-30 ]
 
   # Optional: Set the property to a value between 0-1 to enable random sampling (time frames scope)
