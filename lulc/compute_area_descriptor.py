@@ -45,12 +45,10 @@ def compute_area_descriptor(cfg: DictConfig) -> None:
     log.info(f'Computing area descriptors for {out_name}')
     aoi_id_col = getattr(cfg.area, 'aoi_id_col', 'osm_id')
 
-    targets_specified = False
     if cfg.area.target_aoi_ids:
         aoi_gdf = aoi_source[aoi_source[aoi_id_col].isin(cfg.area.target_aoi_ids)].copy()
         if not aoi_gdf.empty:
             log.info('Filtering AOI by provided target_aoi_ids.')
-            targets_specified = True
         else:
             log.info('None of the target_aoi_ids are present in the AOI object. Ignoring target_aoi_ids.')
             aoi_gdf = aoi_source.copy()
@@ -82,9 +80,6 @@ def compute_area_descriptor(cfg: DictConfig) -> None:
     df = pd.concat(dfs)
 
     aoi_name = f'area_{out_name.lower()}'
-    if targets_specified:
-        aoi_name += '_clipped'
-
     descriptor_png = output_dir / f'{aoi_name}.png'
     log.info(f'Persisting descriptor visualization: {descriptor_png}')
     ax = df.plot(figsize=(25, 25), alpha=0.05, edgecolor='black', lw=0.7)

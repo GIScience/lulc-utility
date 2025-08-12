@@ -23,6 +23,7 @@ dependencies = [
     "omegaconf==2.3.0",
     "pandas==2.2.2",
     "pillow==9.4.0",
+    "pyarrow>=21.0.0",
     "pydantic==2.6.2",
     "pyproj==3.5.0",
     "pyyaml==6.0.2",

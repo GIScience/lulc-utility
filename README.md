@@ -94,9 +94,20 @@ The area descriptor will generate a set of tiles to use during training.
 To automatically prepare the descriptor set relevant area parameters
 in [`conf/area_descriptor.yaml`](conf/area_descriptor.yaml) and run the following command:
 
-```bash
+```shell
 uv run python lulc/compute_area_descriptor.py
 ```
+
+To sanity check the imagery that would be sourced for each of the tiles, run:
+
+```shell
+uv run python --env-file .env lulc/save_imagery.py
+```
+
+For just a sample, you can also create a smaller area descriptor file and provide the optional command line
+input `--area-file path/to/file`.
+Note that the `sentinel_hub` operator already caches the imagery requested, so one can also find the relevant tiff files
+in `/cache/imagery/sentinel_hub/...`.
 
 #### Ground truth labels
 
@@ -107,7 +118,7 @@ To edit the ground truth labels, create a new [data/label/label_*.yaml](data/lab
 
 To export a raster of your ground truth labels (for visual inspection and approval), run:
 
-```bash
+```shell
 uv run --env-file .env python lulc/export_osm_labels.py
 ```
 
@@ -127,7 +138,7 @@ Normalisation parameters can be set in the [`conf/data/*.yaml`](conf/data) (`dat
 To recalculate a reasonable set of values for new datasets, one needs to run the following script
 (note that this will load all of the images in your area descriptor so can take some time):
 
-```bash
+```shell
 uv run --env-file .env python lulc/calculate_dataset_statistics.py
 ```
 
@@ -146,7 +157,7 @@ each class.
 
 Training can be run with the following commands (project root as working DIR):
 
-```bash
+```shell
 uv run --env-file .env python lulc/train.py
 ```
 
@@ -161,7 +172,7 @@ e.g.: `LULC-SEG-2` and modify the [`conf/serve/local.yaml`](conf/serve/local.yam
 Copy the [`.env_template`](.env_template) file to `.env` and populate it.
 Then start the application:
 
-```bash
+```shell
 uv run --group deploy --no-dev --env-file .env python app/api.py
 ```
 

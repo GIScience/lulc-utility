@@ -25,6 +25,8 @@ and this project mostly adheres to [Semantic Versioning](https://semver.org/spec
 - new imagery store data loaders to read images from a directory path or from minio
 - development script `export_osm_labels` to create a single raster file containing the ground truth labels based on the
   current osm filter
+- development script `save_imagery` to store the imagery tiles in the cache dir for visual inspection and sanity
+checking [#92](https://gitlab.heigit.org/climate-action/utilities/lulc-utility/-/issues/92)
 - ability to include line or point geometries in the osm filter
 
 ## [1.1.1](https://gitlab.heigit.org/climate-action/utilities/lulc-utility/-/releases/1.1.1) - 2025-06-02
