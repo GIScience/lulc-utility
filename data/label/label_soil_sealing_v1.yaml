@@ -11,7 +11,7 @@ osm:
 
         or parking in (multi-storey, garage, rooftop, lane, street_side, underground)
 
-        or landuse in (industrial, commercial, retail)
+        or landuse in (industrial, retail)
 
         or amenity in (bank, bus_station, cinema, casino, supermarket, theatre, library, fuel, clinic, pharmacy)
 
