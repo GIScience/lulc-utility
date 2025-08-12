@@ -3,7 +3,7 @@ defaults:
   - data: d12_regk_v2 # training data configuration file
   - model: v1
   - serve: local
-  - imagery: minio  # 'sentinel_hub' or 'minio' or 'file_dir'
+  - imagery: sentinel_hub  # 'sentinel_hub' or 'minio' or 'file_dir'
 
 # Directory where all intermediate data is being store.
 cache:
