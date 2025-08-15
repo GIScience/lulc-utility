@@ -98,7 +98,7 @@ in [`conf/area_descriptor.yaml`](conf/area_descriptor.yaml) and run the followin
 uv run python lulc/compute_area_descriptor.py
 ```
 
-To sanity check the imagery that would be sourced for each of the tiles, run:
+Optionally, to sanity check the imagery that would be sourced for each of the tiles, run:
 
 ```shell
 uv run python --env-file .env lulc/save_imagery.py
@@ -116,7 +116,7 @@ via [this OSM2LULC mapping](data/label/label_v3.yaml).
 To edit the ground truth labels, create a new [data/label/label_*.yaml](data/label/) file, and update the
 `descriptor.label` value in [conf/data/*.yaml](conf/data/*.yaml) according to your new label file.
 
-To export a raster of your ground truth labels (for visual inspection and approval), run:
+Optionally, to export a single raster of your ground truth labels (for visual inspection and approval), run:
 
 ```shell
 uv run --env-file .env python lulc/export_osm_labels.py
