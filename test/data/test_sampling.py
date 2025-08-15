@@ -1,9 +1,8 @@
 from unittest.mock import Mock
 
 import numpy as np
-from shapely import wkt
-
 import pandas as pd
+from shapely import wkt
 
 from lulc.data.sampling import GeospatialStratifiedSampler
 

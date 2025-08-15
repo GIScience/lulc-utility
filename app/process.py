@@ -1,7 +1,7 @@
 import logging
-from enum import Enum
 from datetime import datetime
-from typing import Tuple, Callable, Dict, Optional
+from enum import Enum
+from typing import Callable, Dict, Optional, Tuple
 
 import numpy as np
 import numpy.ma as ma
@@ -11,7 +11,7 @@ from scipy.special import softmax
 
 from lulc.data.label import HashableDict, LabelDescriptor
 from lulc.data.tx.array import ReclassifyMerge
-from lulc.ops.exception import OperatorValidationException, OperatorInteractionException
+from lulc.ops.exception import OperatorInteractionError, OperatorValidationError
 from lulc.ops.imagery_store_operator import ImageryStore
 from lulc.ops.osm_operator import OhsomeOps
 
@@ -82,9 +82,9 @@ def analyse(
             labels = __fusion(osm, osm_lulc_mapping, threshold, area_coords, end_date, fusion_mode, logits)
 
             return labels, imagery_size
-    except OperatorValidationException as e:
+    except OperatorValidationError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    except OperatorInteractionException as e:
+    except OperatorInteractionError as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         log.debug('Model inference pipeline completed')

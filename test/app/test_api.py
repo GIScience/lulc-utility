@@ -1,7 +1,7 @@
 import io
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, Tuple, List
+from typing import Dict, List, Tuple
 
 import numpy as np
 import pytest
@@ -10,7 +10,7 @@ from onnxruntime import InferenceSession
 from tifffile import imread
 
 from app.api import app
-from lulc.data.label import LabelDescriptor, HashableDict
+from lulc.data.label import HashableDict, LabelDescriptor
 from lulc.data.tx.array import AdjustShape, NanToNum, Normalize, Stack
 from lulc.ops.imagery_store_operator import ImageryStore
 from lulc.ops.osm_operator import OhsomeOps

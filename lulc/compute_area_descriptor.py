@@ -1,19 +1,19 @@
 import logging.config
 import os
-import yaml
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 from typing import Tuple
 
 import contextily as cx
+import geopandas as gpd
 import hydra
 import pandas as pd
-import geopandas as gpd
-from concurrent.futures import ProcessPoolExecutor, as_completed
+import yaml
 from geopy.geocoders import Nominatim
-from matplotlib import pyplot as plt
-from shapely import wkt
-from omegaconf import DictConfig
 from hydra.core.hydra_config import HydraConfig
+from matplotlib import pyplot as plt
+from omegaconf import DictConfig
+from shapely import wkt
 from tqdm import tqdm
 
 from lulc.data.grid import GridCalculator
@@ -136,7 +136,7 @@ def geocode_aoi(aoi_name: str) -> Tuple[gpd.GeoDataFrame, str]:
             print(f'  [{idx}] {getattr(loc, "address", str(loc))}')
         while True:
             try:
-                selection = int(input(f'Select index (0-{len(locations)-1}): '))
+                selection = int(input(f'Select index (0-{len(locations) - 1}): '))
                 if 0 <= selection < len(locations):
                     location = locations[selection]
                     break

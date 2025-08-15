@@ -2,11 +2,12 @@ import io
 
 import matplotlib.pyplot as plt
 from fastapi import APIRouter, HTTPException
-from sentinelhub import BBox, CRS as SCRS, to_utm_bbox
+from sentinelhub import CRS as SCRS
+from sentinelhub import BBox, to_utm_bbox
 from starlette.requests import Request
 
 from app.process import FusionMode
-from app.route.common import LulcWorkUnit, __compute_raster_response, ImageResponse, ProcessingResult
+from app.route.common import ImageResponse, LulcWorkUnit, ProcessingResult, __compute_raster_response
 from app.stats import tta_uncertainty
 
 router = APIRouter(prefix='/uncertainty')

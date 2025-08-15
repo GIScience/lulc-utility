@@ -1,4 +1,4 @@
-class OperatorValidationException(Exception):
+class OperatorValidationError(Exception):
     """
     Describes a recoverable failure in the application-operator interaction
     """
@@ -6,7 +6,7 @@ class OperatorValidationException(Exception):
     pass
 
 
-class OperatorInteractionException(Exception):
+class OperatorInteractionError(Exception):
     """
     Describes a fatal failure in the application-operator interaction
     """

@@ -7,13 +7,14 @@ from fastapi import APIRouter
 from matplotlib import pyplot as plt
 from matplotlib.patches import Patch
 from pydantic import BaseModel, Field
-from sentinelhub import BBox, CRS as SCRS, to_utm_bbox, bbox_to_dimensions
+from sentinelhub import CRS as SCRS
+from sentinelhub import BBox, bbox_to_dimensions, to_utm_bbox
 from starlette.requests import Request
 from webcolors import rgb_to_hex
 
 from app.process import FusionMode, analyse
-from app.route.common import GeoTiffResponse, LulcWorkUnit, __compute_raster_response, ProcessingResult, ImageResponse
-from lulc.data.label import LabelDescriptor, HashableDict
+from app.route.common import GeoTiffResponse, ImageResponse, LulcWorkUnit, ProcessingResult, __compute_raster_response
+from lulc.data.label import HashableDict, LabelDescriptor
 
 router = APIRouter(prefix='/segment')
 

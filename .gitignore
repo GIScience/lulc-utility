@@ -15,5 +15,7 @@ outputs/
 .vscode/**
 **/.neptune/**
 .ruff_cache
+.coverage
+coverage.xml
 
 playground.py

@@ -1,11 +1,11 @@
 from abc import abstractmethod
-from typing import Optional, Literal, Any, List
+from typing import Any, List, Literal, Optional
 
 import seaborn as sns
 from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
 from torch import Tensor
-from torchmetrics import Metric, ConfusionMatrix
+from torchmetrics import ConfusionMatrix, Metric
 
 
 class PlotMetric(Metric):

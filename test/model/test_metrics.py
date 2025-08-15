@@ -5,7 +5,7 @@ from lulc.model.metrics import ConfusionMatrix2D
 
 def test_confusion_matrix_when_preds_equal_targets():
     cm = ConfusionMatrix2D(labels=['A', 'B', 'C'], task='multiclass', num_classes=3, normalize='true')
-    input = torch.tensor(
+    input_tensor = torch.tensor(
         [
             [
                 [1, 2, 0],
@@ -15,7 +15,7 @@ def test_confusion_matrix_when_preds_equal_targets():
         ]
     )
 
-    cm.update(input, input)
+    cm.update(input_tensor, input_tensor)
     result = cm.compute()
     assert torch.equal(
         result,

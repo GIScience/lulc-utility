@@ -45,7 +45,7 @@ Run `uv run pre-commit install` to activate them.
 
 ### Testing
 
-Run `uv run --all-groups test pytest` to run the tests.
+Run `uv run --all-groups pytest` to run the tests.
 
 ## Configuration
 
