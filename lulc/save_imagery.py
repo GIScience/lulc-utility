@@ -11,6 +11,7 @@ import rasterio
 import yaml
 from hydra import compose
 from pyproj import CRS
+from tqdm import tqdm
 
 from lulc.ops.imagery_store_operator import resolve_imagery_store
 
@@ -40,7 +41,7 @@ def cache_imagery(area_descriptor_file: str):
 
     base_file_path = Path(f'./cache/imagery/{cfg.imagery.operator}/{uuid.uuid4()}')
     log.info(f'Saving images to {base_file_path}/')
-    for i, tile in area_descriptor.iterrows():
+    for i, tile in tqdm(area_descriptor.iterrows(), total=area_descriptor.shape[0]):
         tile_file_path = base_file_path / str(i)
         if not tile_file_path.exists():
             os.makedirs(tile_file_path)

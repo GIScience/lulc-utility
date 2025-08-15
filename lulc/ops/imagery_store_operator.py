@@ -1,5 +1,6 @@
 import logging
 import logging as rio_logging
+import math
 import shutil
 import warnings
 from abc import ABC, abstractmethod
@@ -227,7 +228,6 @@ class FileOperator(ImageryStore):
         tile_specification = gpd.GeoDataFrame(tile_specification, geometry='bbox')
 
         self.tile_specification = tile_specification
-        self.sindex = self.tile_specification.sindex
 
         return
 
@@ -252,7 +252,6 @@ class FileOperator(ImageryStore):
         return _create_image_from_tiles(
             area_coords=area_coords,
             tile_specification=self.tile_specification,
-            sindex=self.sindex,
             tile_reader=self.open_tiles,
         )
 
@@ -290,7 +289,6 @@ class MinioOperator(ImageryStore):
 
         tile_specification['bbox'] = tile_specification['bbox'].apply(lambda b: shapely.Polygon.from_bounds(*b))
         self.tile_specification = gpd.GeoDataFrame(tile_specification, geometry='bbox')
-        self.sindex = self.tile_specification.sindex
 
         return
 
@@ -322,7 +320,6 @@ class MinioOperator(ImageryStore):
         return _create_image_from_tiles(
             area_coords=area_coords,
             tile_specification=self.tile_specification,
-            sindex=self.sindex,
             tile_reader=self.open_tiles,
         )
 
@@ -330,11 +327,17 @@ class MinioOperator(ImageryStore):
 def _create_image_from_tiles(
     area_coords: Tuple[float, float, float, float],
     tile_specification: gpd.GeoDataFrame,
-    sindex: gpd.sindex.BaseSpatialIndex,
     tile_reader: Callable,
 ) -> Tuple[Dict[str, np.ndarray], Tuple[int, int]]:
+    """
+    Create a rasterised image within the `area_coords`.
+
+    :param area_coords: The bounding box to query for
+    :param tile_specification: A geodataframe containing the source tiles and their spatial extents
+    :param tile_reader: A function to read tiles from their ids.
+    """
     # Get tiles that cover the area_coords
-    possible_matches_idx = list(sindex.intersection(area_coords))
+    possible_matches_idx = list(tile_specification.sindex.intersection(area_coords))
     intersecting_tiles = tile_specification.iloc[possible_matches_idx]['id'].tolist()
 
     # Read tiles
@@ -355,14 +358,23 @@ def _create_image_from_tiles(
             crop=True,
         )
     else:
+        # Adjust the bounds to align with the resolution of the sources (due to https://github.com/rasterio/rasterio/issues/2986)
+        # Here is test case that showcases this issue: [8.43687, 49.26718, 8.78941, 49.49760]
+        xres, yres = sources[0].res
+        xmin = math.floor(xmin / xres) * xres
+        xmax = math.ceil(xmax / xres) * xres
+        ymin = math.floor(ymin / yres) * yres
+        ymax = math.ceil(ymax / yres) * yres
+
         mosaic, _ = merge(sources, bounds=(xmin, ymin, xmax, ymax))
 
     # Rearrange the array and drop the "A" channel (from RGBA)
     mosaic = np.transpose(mosaic, (1, 2, 0))  # assuming it is (z, x, y) - transpose to (x, y, z)
     if mosaic.shape[2] == 4:
         vals = np.unique(mosaic[:, :, 3]).tolist()
-        # Should actually only allow 255, but https://github.com/rasterio/rasterio/issues/2986
-        assert set(vals) <= {0, 255}, (
+        assert set(vals) <= {
+            255,
+        }, (
             'The image has 4 channels. '
             f'Assuming RGBA format, the 4th channel should only contain 255, but it contains: {vals}'
         )

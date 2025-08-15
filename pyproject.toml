@@ -12,7 +12,7 @@ repository = "https://gitlab.heigit.org/climate-action/utilities/lulc-utility.gi
 requires-python = ">=3.11,<3.12"
 dependencies = [
     "geocube==0.4.2",
-    "geopandas==0.14.3",
+    "geopandas==0.14.4",
     "hydra-core==1.3.2",
     "matplotlib==3.7.3",
     "minio==7.2.16",
@@ -26,7 +26,7 @@ dependencies = [
     "pydantic==2.6.2",
     "pyproj==3.5.0",
     "pyyaml==6.0.2",
-    "rasterio==1.3.8",
+    "rasterio==1.4.3",
     "sentinelhub==3.9.1",
     "setuptools<80.9", # temporary to avoid deprecation warning due to lightning
     "shapely==2.0.1",
