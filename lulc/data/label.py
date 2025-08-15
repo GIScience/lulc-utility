@@ -29,8 +29,7 @@ class LabelDescriptor(BaseModel):
     )
     osm_filter: Optional[str] = Field(
         title='OSM Filter',
-        description='The OSM filter statement that will extract all elements that fit '
-        'the description of this label.',
+        description='The OSM filter statement that will extract all elements that fit the description of this label.',
         examples=['landuse=forest or natural=wood'],
         default=None,
     )

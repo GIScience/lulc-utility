@@ -1,10 +1,11 @@
-from typing import Tuple, Optional
-from sklearn.model_selection import train_test_split
+from typing import Optional, Tuple
+
+import geopandas as gpd
 from shapely import wkt
+from sklearn.model_selection import train_test_split
 from torch.utils.data import Subset
 
 from lulc.data.dataset import AreaDataset
-import geopandas as gpd
 
 
 class GeospatialStratifiedSampler:

@@ -1,11 +1,11 @@
 import logging
 import math
-from typing import Any, List, Tuple, Dict
+from typing import Any, Dict, List, Tuple
 
 import lightning.pytorch as pl
 import matplotlib.pyplot as plt
 import torch
-import torch.nn.functional as F
+import torch.nn.functional as nn_functional
 from neptune.types import File
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -135,9 +135,9 @@ class SegformerModule(pl.LightningModule):
         x, y = batch['x'], batch['y']
 
         logits = self.model(x).logits / self.temperature
-        upsampled_logits = F.interpolate(logits, size=y.shape[-2:], mode='bilinear', align_corners=False)
+        upsampled_logits = nn_functional.interpolate(logits, size=y.shape[-2:], mode='bilinear', align_corners=False)
 
-        loss = F.cross_entropy(
+        loss = nn_functional.cross_entropy(
             upsampled_logits,
             y,
             ignore_index=self.configuration.semantic_loss_ignore_index,

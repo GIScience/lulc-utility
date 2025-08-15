@@ -10,11 +10,11 @@ from hydra import compose
 from matplotlib import pyplot as plt
 from onnxruntime import InferenceSession, SessionOptions
 
-import app.logger  # noqa: F402
-from app.logger import log_level, log_config, onnx_log_level
-from app.route import segment, health, uncertainty
+import app.logger
+from app.logger import log_config, log_level, onnx_log_level
+from app.route import health, segment, uncertainty
 from lulc.data.label import resolve_corine_labels, resolve_osm_labels
-from lulc.data.tx.array import Normalize, Stack, NanToNum, AdjustShape
+from lulc.data.tx.array import AdjustShape, NanToNum, Normalize, Stack
 from lulc.model.ops.download import NeptuneModelDownload
 from lulc.ops.imagery_store_operator import resolve_imagery_store
 from lulc.ops.osm_operator import OhsomeOps

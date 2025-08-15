@@ -32,7 +32,7 @@ class EnergyContext:
         self.energy_meter.start(self.init_tag)
         return self.energy_meter
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, type_, value, traceback):
         self.energy_meter.stop()
 
         if self.enable_tracking and len(self.readable_devices) > 0:

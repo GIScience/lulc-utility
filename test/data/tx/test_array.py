@@ -1,6 +1,6 @@
 import numpy as np
 
-from lulc.data.tx.array import Stack, ReclassifyMerge, Normalize
+from lulc.data.tx.array import Normalize, ReclassifyMerge, Stack
 
 test_data_random = {
     'x': {

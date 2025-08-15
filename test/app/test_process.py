@@ -1,13 +1,13 @@
 from typing import Tuple
 from unittest.mock import Mock
 
-import pytest
 import numpy as np
+import pytest
 from onnxruntime import InferenceSession
 
-from app.process import analyse, FusionMode
-from lulc.data.tx.array import NanToNum, Stack, AdjustShape
-from lulc.data.label import LabelDescriptor, HashableDict
+from app.process import FusionMode, analyse
+from lulc.data.label import HashableDict, LabelDescriptor
+from lulc.data.tx.array import AdjustShape, NanToNum, Stack
 from lulc.ops.imagery_store_operator import ImageryStore
 from lulc.ops.osm_operator import OhsomeOps
 

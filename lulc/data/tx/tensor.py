@@ -1,5 +1,5 @@
 import torch
-import torchvision.transforms.functional as F
+import torchvision.transforms.functional as tx_functional
 from torchvision import transforms
 
 
@@ -33,7 +33,7 @@ class RandomCrop:
         x = sample['x']
         y = sample['y']
         i, j, h, w = transforms.RandomCrop.get_params(x, output_size=self.output_size)
-        return {'x': F.crop(x, i, j, h, w), 'y': F.crop(y, i, j, h, w)}
+        return {'x': tx_functional.crop(x, i, j, h, w), 'y': tx_functional.crop(y, i, j, h, w)}
 
 
 class CenterCrop:
@@ -44,6 +44,6 @@ class CenterCrop:
         x = sample['x']
         y = sample['y']
         return {
-            'x': F.center_crop(x, self.output_size),
-            'y': F.center_crop(y, self.output_size),
+            'x': tx_functional.center_crop(x, self.output_size),
+            'y': tx_functional.center_crop(y, self.output_size),
         }

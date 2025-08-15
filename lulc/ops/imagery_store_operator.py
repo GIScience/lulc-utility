@@ -33,7 +33,7 @@ from sentinelhub import (
 from sentinelhub.exceptions import SHRateLimitWarning
 
 from lulc.data.tx.array import NanToNum, ReclassifyMerge, Stack, ToDtype
-from lulc.ops.exception import OperatorInteractionException, OperatorValidationException
+from lulc.ops.exception import OperatorInteractionError, OperatorValidationError
 
 log = logging.getLogger(__name__)
 rio_logging.getLogger('rasterio._filepath').setLevel(logging.ERROR)
@@ -105,7 +105,7 @@ class SentinelHubOperator(ImageryStore):
         bbox_width, bbox_height = bbox_to_dimensions(bbox, resolution=resolution)
 
         if bbox_width > 2500 or bbox_width > 2500:
-            raise OperatorValidationException(
+            raise OperatorValidationError(
                 'Area (after edge correction buffer) exceeds processing limit: 2500 px x 2500 px'
             )
 
@@ -144,7 +144,7 @@ class SentinelHubOperator(ImageryStore):
             return request.get_data(save_data=True)[0], (bbox_height, bbox_width)
         except DownloadFailedException:
             log.exception('Data download not possible')
-            raise OperatorInteractionException(
+            raise OperatorInteractionError(
                 'SentinelHub operator interaction not possible. Please contact platform administrator.'
             )
         except ReadError:
@@ -173,7 +173,7 @@ class SentinelHubOperator(ImageryStore):
         end_date = f'{end_date}-01-01'
 
         if bbox_width > 2500 or bbox_height > 2500:
-            raise OperatorValidationException(
+            raise OperatorValidationError(
                 'Area (after edge correction buffer) exceeds processing limit: 2500 px x 2500 px'
             )
 
@@ -204,7 +204,7 @@ class SentinelHubOperator(ImageryStore):
             return request.get_data(save_data=True)[0], (bbox_height, bbox_width)
         except DownloadFailedException:
             log.exception('Data download not possible')
-            raise OperatorInteractionException(
+            raise OperatorInteractionError(
                 'Corine operator interaction not possible. Please contact platform administrator.'
             )
 

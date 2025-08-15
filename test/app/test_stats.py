@@ -2,7 +2,7 @@ from unittest.mock import Mock, patch
 
 import numpy as np
 
-from app.stats import tta_uncertainty, tta
+from app.stats import tta, tta_uncertainty
 
 
 def test_tta_uncertainty():

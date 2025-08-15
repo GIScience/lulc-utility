@@ -1,12 +1,12 @@
 import logging
 import uuid
-from functools import partial
-from typing import Tuple, Optional
 import warnings
+from functools import partial
+from typing import Optional, Tuple
 
 import geopandas as gpd
 import pandas as pd
-from sentinelhub import OsmSplitter, CRS, UtmZoneSplitter
+from sentinelhub import CRS, OsmSplitter, UtmZoneSplitter
 from shapely.geometry import MultiPolygon, Polygon
 
 DESCRIPTOR_COLUMNS = ['uuid', 'min_x', 'min_y', 'max_x', 'max_y', 'start_date', 'end_date']

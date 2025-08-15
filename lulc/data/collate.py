@@ -2,7 +2,7 @@ from functools import partial
 
 from torch.utils.data import default_collate
 
-from lulc.data.tx.tensor import RandomCrop, CenterCrop
+from lulc.data.tx.tensor import CenterCrop, RandomCrop
 
 
 def random_crop_collate_fn(crop_height: int, crop_width):
