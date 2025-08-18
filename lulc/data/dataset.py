@@ -1,6 +1,7 @@
 import logging
 import os
 from pathlib import Path
+from shutil import rmtree
 from typing import Optional
 
 import pandas as pd
@@ -54,10 +55,14 @@ class AreaDataset(Dataset):
         self.osm_lulc_mapping = dict([(d.name, d) for d in label_descriptors if d.osm_filter is not None])
         self.color_codes = [d.color for d in label_descriptors]
 
-        self.item_cache = cache_dir / 'items' / area_descriptor_ver / label_descriptor_ver
-        self.cache_items = cache_items
         self.deterministic_tx = deterministic_tx
         self.random_tx = random_tx
+
+        self.cache_items = cache_items
+        self.item_cache = cache_dir / 'items' / area_descriptor_ver / label_descriptor_ver
+        if self.item_cache.exists():
+            log.info(f'Dropping old item cache ({self.item_cache})')
+            rmtree(str(self.item_cache))
 
     def __len__(self):
         return len(self.area_descriptor)

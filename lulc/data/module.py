@@ -3,6 +3,7 @@ import logging
 from functools import partial
 from typing import Dict
 
+import torch
 from lightning import LightningDataModule
 from torch.utils.data import DataLoader
 
@@ -12,6 +13,19 @@ from lulc.data.dataset import AreaDataset
 from lulc.data.sampling import GeospatialStratifiedSampler
 
 log = logging.getLogger(__name__)
+
+# Set multiprocessing_context depending on system.#
+#   Dataloader with default ('spawn') or with 'forkserver' is extremely slow on Linux (CPU) - much slower than
+#   running just one worker).
+#   https://stackoverflow.com/a/78343436/23656147
+#   https://discuss.pytorch.org/t/data-loader-multiprocessing-slow-on-macos/131204/3
+#
+#   But 'fork' won't work with CUDA, so use 'forkserver' in that case (could potentially be 'spawn').
+#   https://docs.pytorch.org/docs/stable/notes/multiprocessing.html
+if torch.cuda.is_available():
+    MULTIPROCESSING_CONTEXT = 'forkserver'
+else:
+    MULTIPROCESSING_CONTEXT = 'fork'
 
 
 class AreaDataModule(LightningDataModule):
@@ -52,6 +66,7 @@ class AreaDataModule(LightningDataModule):
             pin_memory=True,
             num_workers=num_workers,
             persistent_workers=True,
+            multiprocessing_context=MULTIPROCESSING_CONTEXT,
         )
 
     def train_dataloader(self) -> DataLoader:
