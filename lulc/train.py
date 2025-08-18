@@ -1,7 +1,6 @@
 import logging.config
 import os
 from pathlib import Path
-from shutil import rmtree
 
 import hydra
 import lightning.pytorch as pl
@@ -78,10 +77,6 @@ def train(cfg: DictConfig) -> None:
                 ]
             ),
         )
-
-        if dataset.item_cache.exists():
-            log.info('Refreshing item intermediate cache (if exists)')
-            rmtree(str(dataset.item_cache))
 
         datamodule = AreaDataModule(
             dataset=dataset,
