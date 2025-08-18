@@ -1,10 +1,12 @@
+import importlib
 import logging
 import logging as rio_logging
-import math
 import shutil
+import sys
 import warnings
 from abc import ABC, abstractmethod
 from datetime import datetime
+from functools import partial
 from io import BytesIO
 from pathlib import Path
 from tarfile import ReadError
@@ -225,7 +227,7 @@ class FileOperator(ImageryStore):
     def _load_tile_specification(self, path: Path) -> None:
         tile_specification = pd.read_parquet(path, engine='pyarrow')
         tile_specification['bbox'] = tile_specification['bbox'].apply(lambda b: shapely.Polygon.from_bounds(*b))
-        tile_specification = gpd.GeoDataFrame(tile_specification, geometry='bbox')
+        tile_specification = gpd.GeoDataFrame(tile_specification, geometry='bbox', crs='epsg:4326')
 
         self.tile_specification = tile_specification
 
@@ -257,13 +259,15 @@ class FileOperator(ImageryStore):
 
 
 class MinioOperator(ImageryStore):
-    def __init__(self, minio_cfg: DictConfig, tile_spec_path: str, tile_dir: str):
+    def __init__(self, minio_cfg: DictConfig, tile_spec_path: str, tile_reader_cfg: dict):
         """
         Initialise an imagery store for images saved in MinIO.
 
         :param minio_cfg: configuration for the minio connection, including: host, port, access_key, secret_key, bucket
         :param tile_spec_path: the location of the tile specification parquet file within the bucket
-        :param tile_dir: the location within the bucket containing the tiled images
+        :param tile_reader_cfg: a dictionary containing the 'tile_reader' configuration. A 'custom_reader' key takes
+        priority and points to a python script and function name (with a `::` separator before the function name). Or a
+        'tile_dir' should be provided pointing to the object path containing the raw imagery.
         """
         # We don't initialise the client itself because that prevents us from deep copying objects containing this
         # imagery store, including from saving model hyperparameters if the dataset uses this imagery store.
@@ -274,7 +278,20 @@ class MinioOperator(ImageryStore):
             'secure': True if minio_cfg.secure.lower() == 'true' else False,
         }
         self.bucket = minio_cfg.bucket
-        self.tile_dir = tile_dir
+
+        if 'custom_reader' in tile_reader_cfg:
+            mod_name = 'minio_reader'
+            mod, fn = tile_reader_cfg['custom_reader'].split('::')
+            spec = importlib.util.spec_from_file_location(mod_name, mod)
+            module = importlib.util.module_from_spec(spec)
+            sys.modules[mod_name] = module
+            spec.loader.exec_module(module)
+
+            self.open_tiles = partial(getattr(module, fn), self)
+
+        else:
+            self.tile_dir = tile_reader_cfg['tile_dir']
+            self.open_tiles = self._open_tiles
 
         self._load_tile_specification(tile_spec_path)
 
@@ -288,14 +305,14 @@ class MinioOperator(ImageryStore):
                 tile_specification = pd.read_parquet(parquet_bytes)
 
         tile_specification['bbox'] = tile_specification['bbox'].apply(lambda b: shapely.Polygon.from_bounds(*b))
-        self.tile_specification = gpd.GeoDataFrame(tile_specification, geometry='bbox')
+        self.tile_specification = gpd.GeoDataFrame(tile_specification, geometry='bbox', crs='epsg:4326')
 
         return
 
-    def open_tiles(self, tiles: List[str]) -> List[rasterio.DatasetReader]:
+    def _open_tiles(self, tiles: gpd.GeoDataFrame) -> List[rasterio.DatasetReader]:
         client = Minio(**self.client_config)
         sources = []
-        for tile in tiles:
+        for tile in tiles['id'].tolist():
             try:
                 with client.get_object(
                     bucket_name=self.bucket, object_name=f'{self.tile_dir}/{tile}.tiff'
@@ -338,12 +355,12 @@ def _create_image_from_tiles(
     """
     # Get tiles that cover the area_coords
     possible_matches_idx = list(tile_specification.sindex.intersection(area_coords))
-    intersecting_tiles = tile_specification.iloc[possible_matches_idx]['id'].tolist()
+    intersecting_tiles = tile_specification.iloc[possible_matches_idx]
 
     # Read tiles
     sources = tile_reader(intersecting_tiles)
     if not sources:
-        raise RuntimeError(f'No valid sources found for {intersecting_tiles}')
+        raise RuntimeError(f'No valid sources found for {intersecting_tiles["id"].tolist()}')
 
     # Merge and clip tiles to the area_coords
     crs_transformer = Transformer.from_crs(4326, sources[0].crs)
@@ -361,10 +378,10 @@ def _create_image_from_tiles(
         # Adjust the bounds to align with the resolution of the sources (due to https://github.com/rasterio/rasterio/issues/2986)
         # Here is test case that showcases this issue: [8.43687, 49.26718, 8.78941, 49.49760]
         xres, yres = sources[0].res
-        xmin = math.floor(xmin / xres) * xres
-        xmax = math.ceil(xmax / xres) * xres
-        ymin = math.floor(ymin / yres) * yres
-        ymax = math.ceil(ymax / yres) * yres
+        xmin = round(xmin / xres) * xres
+        xmax = round(xmax / xres) * xres
+        ymin = round(ymin / yres) * yres
+        ymax = round(ymax / yres) * yres
 
         mosaic, _ = merge(sources, bounds=(xmin, ymin, xmax, ymax))
 
@@ -416,7 +433,9 @@ def resolve_imagery_store(cfg: DictConfig, cache_dir: Path = None) -> ImagerySto
                 tile_spec_path=Path(cfg.tile_spec_path).expanduser(), tile_dir=Path(cfg.tile_dir).expanduser()
             )
         else:
-            imagery_store = MinioOperator(cfg.minio_platform, tile_spec_path=cfg.tile_spec_path, tile_dir=cfg.tile_dir)
+            imagery_store = MinioOperator(
+                cfg.minio_platform, tile_spec_path=cfg.tile_spec_path, tile_reader_cfg=cfg.tile_reader
+            )
 
     else:
         raise ValueError(f'Cannot resolve imagery operator {cfg.operator}')
