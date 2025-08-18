@@ -9,12 +9,17 @@ minio_platform:
   secret_key: ${oc.env:MINIO_SECRET_KEY}
   bucket: ${oc.env:MINIO_BUCKET}
 
-tile_dir: by_country/germany/global_quarterly_2024q2_mosaic
+# Object name/path in minio for the tile specification file. This file must contain a `bbox` column in WGS84 and an `id`
+# column which refers to the filenames of the images.
+# If you prefer to use a local file instead of one on minio, give the absolute path and prefix with `file:`. For example
+# `tile_spec_path: file:/home/user/planet-data/planet_quads.parquet`
+tile_spec_path: file:/home/dgatland/projects/climate-action/research-and-development/planet_data/planet_quads.parquet
+
+tile_reader:
+  # Either give a tile directory or a path to a custom tile reader function, with a `::` separator before the function
+  # name. If `custom_reader` is provided, this takes priority.
+  custom_reader: conf/imagery/custom_minio_loader.py::open_tiles
+  #tile_dir: by_country/germany/global_quarterly_2024q2_mosaic
 
 # Resolution (in metres) of the tiles
 resolution: 3
-
-# Object name/path in minio for the tile specification file
-# If you prefer to use a local file instead of one on minio, give the absolute path and prefix with `file:`
-# For example, `tile_spec_path: file:/home/user/planet-data/planet_quads.parquet`
-tile_spec_path: file:/home/dgatland/projects/climate-action/research-and-development/planet_data/planet_quads.parquet
