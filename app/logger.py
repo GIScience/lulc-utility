@@ -8,7 +8,7 @@ log_level = os.getenv('LOG_LEVEL', 'INFO').upper()
 logging.basicConfig(level=log_level, force=True)
 
 config_dir = os.getenv('LULC_UTILITY_APP_CONFIG_DIR', str(Path('conf').absolute()))
-log_config = f'{config_dir}/logging/app/logging.yaml'
+log_config = f'{config_dir}/logging.yaml'
 with open(log_config) as file:
     logging.config.dictConfig(yaml.safe_load(file))
 

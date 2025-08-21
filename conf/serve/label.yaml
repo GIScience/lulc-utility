@@ -1,3 +1,7 @@
+# @package serve.label
+
+descriptor: v3
+
 osm:
   - name: built-up
     osm_filter: landuse=civic_admin or landuse=commercial or landuse=depot or landuse=education or landuse=farmyard or landuse=garages or landuse=industrial or landuse=railway or landuse=residential or landuse=retail

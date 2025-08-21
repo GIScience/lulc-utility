@@ -16,7 +16,7 @@ from lulc.data.stats import dataset_iter_statistics
 from lulc.ops.imagery_store_operator import resolve_imagery_store
 
 log_level = os.getenv('LOG_LEVEL', 'INFO')
-log_config = 'conf/logging/app/logging.yaml'
+log_config = 'conf/logging.yaml'
 log = logging.getLogger(__name__)
 
 
@@ -33,27 +33,27 @@ def calculate_dataset_statistics(cfg: DictConfig) -> None:
     """
     torch.multiprocessing.set_start_method('spawn')
 
-    log.info(f'Configuring remote sensing imagery store: {cfg.imagery.operator}')
-    imagery_store, tr = resolve_imagery_store(cfg.imagery, cache_dir=Path(cfg.cache.dir))
+    log.info(f'Configuring remote sensing imagery store: {cfg.train.imagery.operator}')
+    imagery_store, tr = resolve_imagery_store(cfg.train.imagery, cache_dir=Path(cfg.cache.dir))
 
     dataset = AreaDataset(
-        area_descriptor_ver=cfg.data.descriptor.area,
-        label_descriptor_ver=cfg.data.descriptor.label,
-        data_dir=Path(cfg.data.dir),
+        area_cfg=cfg.train.area,
+        label_filter=cfg.train.label,
+        data_dir=Path(cfg.train.data.dir),
         cache_dir=Path(cfg.cache.dir),
         cache_items=cfg.cache.apply,
         imagery_store=imagery_store,
-        resolution=cfg.imagery.resolution,
+        resolution=cfg.train.imagery.resolution,
         deterministic_tx=transforms.Compose(tr),
     )
 
     loader = DataLoader(
         dataset,
         batch_size=1,
-        num_workers=cfg.model.workers,
+        num_workers=cfg.train.model.workers,
         multiprocessing_context=MULTIPROCESSING_CONTEXT,
         persistent_workers=False,
-        collate_fn=center_crop_collate_fn(cfg.data.crop.height, cfg.data.crop.width),
+        collate_fn=center_crop_collate_fn(cfg.train.data.crop.height, cfg.train.data.crop.width),
     )
 
     log.info('Loading images and iteratively calculating dataset statistics')

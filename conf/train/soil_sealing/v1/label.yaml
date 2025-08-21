@@ -1,3 +1,7 @@
+# @package train.label
+
+descriptor: v0
+
 osm:
   - name: sealed_soil
     osm_filter:
@@ -11,13 +15,17 @@ osm:
 
         or parking in (multi-storey, garage, rooftop, lane, street_side, underground)
 
-        or landuse in (industrial, retail)
+        or landuse in (industrial, retail, garages)
 
         or amenity in (bank, bus_station, cinema, casino, supermarket, theatre, library, fuel, clinic, pharmacy)
 
-        or aeroway in (runway, taxiway, helipad, terminal, hangar)
+        or aeroway in (runway, taxiway, helipad, terminal, hangar, apron)
 
         or man_made in (container_terminal, fuel_pump, fuel_station, storage_tank)
+
+        or public_transport in (platform, station)
+
+        or railway in (platform)
       )
     geometry_types:
       - 'polygon'
@@ -25,4 +33,3 @@ osm:
       - 'point'
     color_code: '#B1B1B1'
     description: 'Areas that have been covered by an impermeable material, such as concrete or asphalt etc.'
-

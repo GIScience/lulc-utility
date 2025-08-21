@@ -40,22 +40,22 @@ async def configure_dependencies(app: FastAPI):
     hydra.initialize_config_dir(config_dir=config_dir, version_base=None)
     cfg = compose(config_name='config')
 
-    app.state.imagery_store, tr = resolve_imagery_store(cfg.imagery, cache_dir=Path(cfg.cache.dir))
+    app.state.imagery_store, tr = resolve_imagery_store(cfg.serve.imagery, cache_dir=Path(cfg.cache.dir))
     app.state.osm = OhsomeOps(cache_dir=Path(cfg.cache.dir))
 
     registry = NeptuneModelDownload(
-        model_key=cfg.neptune.model.key,
+        model_key=cfg.serve.app.neptune.model_key,
         project=cfg.neptune.project,
         api_key=cfg.neptune.api_token,
         cache_dir=Path(cfg.cache.dir),
     )
 
-    onnx_model, label_descriptor_version = registry.download_model_version(cfg.serve.model_version)
+    onnx_model, label_descriptor_version = registry.download_model_version(cfg.serve.app.neptune.model_version)
 
-    app.state.osm_labels = resolve_osm_labels(Path(cfg.data.dir), label_descriptor_version)
+    app.state.osm_labels = resolve_osm_labels(Path(cfg.serve.data.dir), cfg.serve.label)
     app.state.osm_cmap = dict(enumerate([d.color for d in app.state.osm_labels]))
 
-    app.state.corine_labels = resolve_corine_labels(Path(cfg.data.dir), label_descriptor_version)
+    app.state.corine_labels = resolve_corine_labels(Path(cfg.serve.data.dir), cfg.serve.label)
     app.state.corine_cmap = dict(enumerate([d.color for d in app.state.corine_labels]))
 
     options = SessionOptions()
@@ -69,11 +69,11 @@ async def configure_dependencies(app: FastAPI):
         log.debug('Transforming imagery')
         x = NanToNum(layers=['s1.tif', 's2.tif'], subset='imagery')(x)
         x = Stack(subset='imagery')(x)
-        x = Normalize(subset='imagery', mean=cfg.data.normalize.mean, std=cfg.data.normalize.std)(x)
+        x = Normalize(subset='imagery', mean=cfg.serve.data.normalize.mean, std=cfg.serve.data.normalize.std)(x)
         return AdjustShape(subset='imagery')(x)
 
     app.state.tx = tx
-    app.state.edge_smoothing_buffer = cfg.serve.edge_smoothing_buffer
+    app.state.edge_smoothing_buffer = cfg.serve.app.edge_smoothing_buffer
 
     log.info('Initialisation completed')
 
