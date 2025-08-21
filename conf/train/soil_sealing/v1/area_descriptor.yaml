@@ -1,0 +1,42 @@
+# @package train.area
+aoi_file: data/training_cities_poland_germany.geojson
+aoi_id_col: osm_id
+
+target_aoi_ids:
+  - 62518  # Karlsruhe Germany - mid size city, good for ground truthing
+  - 285864  # Heidelberg Germany - mid size historic architecture, good for ground truthing
+  - 2793104  # Stuttgart Germany - big, dense city
+  - 62649  # Leipzig Germany -  big city, Eastern Germany
+  - 163256  # Siegen Germany - smaller city
+  - 336075  # Warszawa Poland - big capital city
+  - 2633730  # Chełmża Poland - small urban town
+  - 2768921  # Kraków Poland - big city, historic architecture
+  - 2907537  # Łódź Poland - main study area, big city, good for ground truthing
+  - 3107056  # Łęczna Poland - small city
+
+# Determine the initial grid of the split [osm, utm]
+# More: https://sentinelhub-py.readthedocs.io/en/latest/examples/large_area_utilities.html
+split_mode: osm
+
+# N/A: currently dictated by the planet data dir that we provide in the imagery store configuration
+# Research timespans. Only data from the declared period will be used during dataset computation
+timeframes:
+  - [ 2023-09-01, 2023-09-30 ]
+
+# Optional: Set the property to a value between 0-1 to enable random sampling (time frames scope)
+sampling_frac:
+
+# Directory where the descriptor will be placed after calculation
+output_dir: ./data/area
+
+# Set how much minimum land area each bounding box should cover
+land_area_share: 0.66
+
+# Additional split parameters
+split_params:
+
+  # OSM zoom level in case of using the osm split
+  zoom_level: 11
+
+  # Size of the computed bounding boxes in case of using the utm split
+  bbox_size_m: 25000

@@ -18,4 +18,6 @@ outputs/
 .coverage
 coverage.xml
 
+data/imagery/planet_quads.parquet
 playground.py
+playground

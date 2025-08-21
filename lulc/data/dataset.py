@@ -8,6 +8,7 @@ import pandas as pd
 import rasterio
 import sentinelhub
 import torch
+from omegaconf import DictConfig
 from rasterio import CRS
 from rasterio.merge import merge
 from torch.utils.data import Dataset
@@ -20,15 +21,15 @@ from lulc.ops.imagery_store_operator import ImageryStore
 from lulc.ops.osm_operator import OhsomeOps
 
 log_level = os.getenv('LOG_LEVEL', 'INFO')
-log_config = 'conf/logging/app/logging.yaml'
+log_config = 'conf/logging.yaml'
 log = logging.getLogger(__name__)
 
 
 class AreaDataset(Dataset):
     def __init__(
         self,
-        area_descriptor_ver: str,
-        label_descriptor_ver: str,
+        area_cfg: DictConfig,
+        label_filter: DictConfig,
         imagery_store: ImageryStore,
         resolution: int,
         data_dir: Path,
@@ -44,13 +45,15 @@ class AreaDataset(Dataset):
         - `export_osm_labels`: to generate a raster of each class (a.k.a. label) for the full area defined
           in `imagery_store.area_coords` and save this for visual inspection
         """
-        self.osm = OhsomeOps(cache_dir=cache_dir / 'osm' / label_descriptor_ver / area_descriptor_ver)
+        area_descriptor = getattr(area_cfg, 'aoi_file', getattr(area_cfg, 'aoi_name', None))
+        area_descriptor = Path(area_descriptor).stem
+        self.osm = OhsomeOps(cache_dir=cache_dir / 'osm' / area_descriptor / label_filter.descriptor)
         self.imagery_store = imagery_store
         self.resolution = resolution
 
-        self.area_descriptor = pd.read_csv(str(data_dir / 'area' / f'area_{area_descriptor_ver}.csv'))
+        self.area_descriptor = pd.read_csv(str(data_dir / 'area' / f'{area_descriptor}.csv'))
 
-        label_descriptors = resolve_osm_labels(data_dir, label_descriptor_ver)
+        label_descriptors = resolve_osm_labels(data_dir, label_filter)
         self.labels = [d.name for d in label_descriptors]
         self.osm_lulc_mapping = dict([(d.name, d) for d in label_descriptors if d.osm_filter is not None])
         self.color_codes = [d.color for d in label_descriptors]
@@ -59,7 +62,7 @@ class AreaDataset(Dataset):
         self.random_tx = random_tx
 
         self.cache_items = cache_items
-        self.item_cache = cache_dir / 'items' / area_descriptor_ver / label_descriptor_ver
+        self.item_cache = cache_dir / 'items' / area_descriptor / label_filter.descriptor
         if self.item_cache.exists():
             log.info(f'Dropping old item cache ({self.item_cache})')
             rmtree(str(self.item_cache))

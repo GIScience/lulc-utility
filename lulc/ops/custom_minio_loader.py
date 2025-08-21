@@ -11,7 +11,7 @@ from minio import Minio, S3Error
 from lulc.ops.imagery_store_operator import MinioOperator
 
 log_level = os.getenv('LOG_LEVEL', 'INFO')
-log_config = 'conf/logging/app/logging.yaml'
+log_config = 'conf/logging.yaml'
 log = logging.getLogger(__name__)
 
 tile_obj_dir = 'by_country/{code}/global_quarterly_2024q2_mosaic'
@@ -22,7 +22,7 @@ def read_tile_grouping(
 ) -> gpd.GeoDataFrame:
     # Hydra config is already loaded, so we just need to connect to it here
     cfg = compose(config_name='config')
-    minio_cfg = cfg['imagery']['minio_platform']
+    minio_cfg = cfg.train.imagery['minio_platform']
     client_config = {
         'endpoint': f'{minio_cfg["host"]}:{minio_cfg["port"]}',
         'access_key': minio_cfg['access_key'],

@@ -1,0 +1,51 @@
+# @package train.area
+
+# Source of the NUTS layer
+nuts_source: https://gisco-services.ec.europa.eu/distribution/v2/nuts/geojson/NUTS_RG_10M_2021_4326.geojson
+nuts_id_col: NUTS_ID
+
+# Determine the initial grid of the split [osm, utm]
+# More: https://sentinelhub-py.readthedocs.io/en/latest/examples/large_area_utilities.html
+split_mode: osm
+
+# Research timespans. Only data from the declared period will be used during dataset computation
+timeframes:
+  - [ 2020-05-01, 2020-05-31 ]
+  - [ 2020-06-01, 2020-06-30 ]
+  - [ 2020-07-01, 2020-07-31 ]
+  - [ 2020-08-01, 2020-08-30 ]
+  - [ 2020-09-01, 2020-09-30 ]
+  - [ 2021-05-01, 2021-05-31 ]
+  - [ 2021-06-01, 2021-06-30 ]
+  - [ 2021-07-01, 2021-07-31 ]
+  - [ 2021-08-01, 2021-08-30 ]
+  - [ 2021-09-01, 2021-09-30 ]
+  - [ 2022-05-01, 2022-05-31 ]
+  - [ 2022-06-01, 2022-06-30 ]
+  - [ 2022-07-01, 2022-07-31 ]
+  - [ 2022-08-01, 2022-08-30 ]
+  - [ 2022-09-01, 2022-09-30 ]
+  - [ 2023-05-01, 2023-05-31 ]
+  - [ 2023-06-01, 2023-06-30 ]
+  - [ 2023-07-01, 2023-07-31 ]
+  - [ 2023-08-01, 2023-08-30 ]
+  - [ 2023-09-01, 2023-09-30 ]
+
+# Areas that will be incorporated into the dataset
+target_nuts_ids:
+  - DE12
+
+# Set the property to a value between 0-1 to enable random sampling (time frames scope)
+sampling_frac:
+
+# Directory where the descriptor will be placed after calculation
+output_dir: ./data/area
+
+# Additional split parameters
+split_params:
+
+  # OSM zoom level in case of using the osm split
+  zoom_level: 11
+
+  # Size of the computed bounding boxes in case of using the utm split
+  bbox_size_m: 25000

@@ -1,0 +1,12 @@
+# @package train.data
+
+dir: ./data
+train_frac: 0.8
+test_frac: 0.1
+crop:
+  height: 1024
+  width: 1024
+class_weights:  # copy from the logs of `calculate_dataset_statistics`
+normalize:
+  mean:  # copy from the logs of `calculate_dataset_statistics`
+  std:  # copy from the logs of `calculate_dataset_statistics`

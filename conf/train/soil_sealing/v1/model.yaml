@@ -1,3 +1,11 @@
+# @package train.model
+
+# Neptune config
+neptune:
+  # model_key must be less than 10 characters and contain only capital letters and digits
+  model_key: SEALEDSOIL
+  mode: ${oc.env:NEPTUNE_TRAIN_MODE}
+
 # Number of imagery input channels
 num_channels: 3
 

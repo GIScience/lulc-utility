@@ -213,7 +213,7 @@ class SentinelHubOperator(ImageryStore):
 
 
 class FileOperator(ImageryStore):
-    def __init__(self, tile_spec_path: Path, tile_dir: Path):
+    def __init__(self, tile_spec_path: str, tile_dir: str):
         """
         Initialise an imagery store for images saved in a local file directory.
 
@@ -221,7 +221,7 @@ class FileOperator(ImageryStore):
         :param tile_spec_path: path to parquet file describing the bounding boxes of the tiled images with an
         'id' column to resolve the filename (`tile_dir / f'{id}.tiff'`)
         """
-        self.tile_dir = tile_dir
+        self.tile_dir = Path(tile_dir).expanduser()
         self._load_tile_specification(path=Path(tile_spec_path).expanduser())
 
     def _load_tile_specification(self, path: Path) -> None:
@@ -264,7 +264,8 @@ class MinioOperator(ImageryStore):
         Initialise an imagery store for images saved in MinIO.
 
         :param minio_cfg: configuration for the minio connection, including: host, port, access_key, secret_key, bucket
-        :param tile_spec_path: the location of the tile specification parquet file within the bucket
+        :param tile_spec_path: the location of the tile specification parquet file within the bucket or, if prefixed
+        with `file:` within the local filesystem
         :param tile_reader_cfg: a dictionary containing the 'tile_reader' configuration. A 'custom_reader' key takes
         priority and points to a python script and function name (with a `::` separator before the function name). Or a
         'tile_dir' should be provided pointing to the object path containing the raw imagery.
@@ -297,7 +298,7 @@ class MinioOperator(ImageryStore):
 
     def _load_tile_specification(self, obj_path: str) -> None:
         if obj_path.startswith('file:'):
-            tile_specification = pd.read_parquet(obj_path.replace('file:', ''), engine='pyarrow')
+            tile_specification = pd.read_parquet(Path(obj_path.replace('file:', '')).expanduser(), engine='pyarrow')
         else:
             client = Minio(**self.client_config)
             with client.get_object(bucket_name=self.bucket, object_name=obj_path) as response_stream:
@@ -400,18 +401,18 @@ def _create_image_from_tiles(
     return {'rgb': mosaic}, mosaic.shape[:2]
 
 
-def resolve_imagery_store(cfg: DictConfig, cache_dir: Path = None) -> ImageryStore:
-    if cfg.operator == 'sentinel_hub':
+def resolve_imagery_store(imagery_cfg: DictConfig, cache_dir: Path = None) -> ImageryStore:
+    if imagery_cfg.operator == 'sentinel_hub':
         imagery_store = SentinelHubOperator(
-            cfg.api_id,
-            cfg.api_secret,
-            Path(cfg.evalscript_dir),
-            cfg.evalscript_name,
-            cfg.cor_api_id,
-            cfg.catalog_id,
-            cfg.service_url,
-            cfg.evalscript_name_cor,
-            cfg.corine_years,
+            imagery_cfg.api_id,
+            imagery_cfg.api_secret,
+            Path(imagery_cfg.evalscript_dir),
+            imagery_cfg.evalscript_name,
+            imagery_cfg.cor_api_id,
+            imagery_cfg.catalog_id,
+            imagery_cfg.service_url,
+            imagery_cfg.evalscript_name_cor,
+            imagery_cfg.corine_years,
             cache_dir=cache_dir / 'imagery',
         )
         transforms = [
@@ -420,7 +421,7 @@ def resolve_imagery_store(cfg: DictConfig, cache_dir: Path = None) -> ImagerySto
             ReclassifyMerge(),
         ]
 
-    elif cfg.operator in ('file_dir', 'minio'):
+    elif imagery_cfg.operator in ('file_dir', 'minio'):
         transforms = [
             NanToNum(layers=['rgb']),
             Stack(),
@@ -428,16 +429,19 @@ def resolve_imagery_store(cfg: DictConfig, cache_dir: Path = None) -> ImagerySto
             ToDtype(dtype=np.float32),
         ]
 
-        if cfg.operator == 'file_dir':
+        if imagery_cfg.operator == 'file_dir':
             imagery_store = FileOperator(
-                tile_spec_path=Path(cfg.tile_spec_path).expanduser(), tile_dir=Path(cfg.tile_dir).expanduser()
+                tile_spec_path=imagery_cfg.tile_spec_path,
+                tile_dir=imagery_cfg.tile_dir,
             )
         else:
             imagery_store = MinioOperator(
-                cfg.minio_platform, tile_spec_path=cfg.tile_spec_path, tile_reader_cfg=cfg.tile_reader
+                imagery_cfg.minio_platform,
+                tile_spec_path=imagery_cfg.tile_spec_path,
+                tile_reader_cfg=imagery_cfg.tile_reader,
             )
 
     else:
-        raise ValueError(f'Cannot resolve imagery operator {cfg.operator}')
+        raise ValueError(f'Cannot resolve imagery operator {imagery_cfg.operator}')
 
     return imagery_store, transforms

@@ -10,7 +10,6 @@ import hydra
 import pandas as pd
 import yaml
 from geopy.geocoders import Nominatim
-from hydra.core.hydra_config import HydraConfig
 from matplotlib import pyplot as plt
 from omegaconf import DictConfig
 from shapely import wkt
@@ -19,11 +18,11 @@ from tqdm import tqdm
 from lulc.data.grid import GridCalculator
 
 log_level = os.getenv('LOG_LEVEL', 'INFO')
-log_config = 'conf/logging/app/logging.yaml'
+log_config = 'conf/logging.yaml'
 log = logging.getLogger(__name__)
 
 
-@hydra.main(version_base=None, config_path='../conf', config_name='area_descriptor')
+@hydra.main(version_base=None, config_path='../conf', config_name='config')
 def compute_area_descriptor(cfg: DictConfig) -> None:
     """
     Compute the area data descriptor by splitting the AOI into a grid.
@@ -36,17 +35,17 @@ def compute_area_descriptor(cfg: DictConfig) -> None:
     :param cfg: loaded area descriptor configuration
     :return: The area descriptor is saved as a CSV file and a visualization is generated as a PNG file.
     """
-    output_dir = Path(cfg.area.output_dir)
+    output_dir = Path(cfg.train.area.output_dir)
 
     log.info('Retrieving area')
     land_mask = gpd.read_file('data/world_generalized.geojson')
-    aoi_source, out_name = retrieve_area(cfg)
+    aoi_source, out_name = retrieve_area(cfg.train.area)
 
     log.info(f'Computing area descriptors for {out_name}')
-    aoi_id_col = getattr(cfg.area, 'aoi_id_col', 'osm_id')
+    aoi_id_col = getattr(cfg.train.area, 'aoi_id_col', 'osm_id')
 
-    if cfg.area.target_aoi_ids:
-        aoi_gdf = aoi_source[aoi_source[aoi_id_col].isin(cfg.area.target_aoi_ids)].copy()
+    if cfg.train.area.target_aoi_ids:
+        aoi_gdf = aoi_source[aoi_source[aoi_id_col].isin(cfg.train.area.target_aoi_ids)].copy()
         if not aoi_gdf.empty:
             log.info('Filtering AOI by provided target_aoi_ids.')
         else:
@@ -58,15 +57,15 @@ def compute_area_descriptor(cfg: DictConfig) -> None:
     log.info('Computing area descriptor')
 
     dfs = []
-    prog = tqdm(cfg.area.timeframes)
+    prog = tqdm(cfg.train.area.timeframes)
 
     with ProcessPoolExecutor() as executor:
         future_area_descriptor = {
-            executor.submit(build_grid_cells, start_date, end_date, aoi_gdf, aoi_id_col, land_mask, cfg): (
+            executor.submit(build_grid_cells, start_date, end_date, aoi_gdf, aoi_id_col, land_mask, cfg.train): (
                 start_date,
                 end_date,
             )
-            for start_date, end_date in cfg.area.timeframes
+            for start_date, end_date in cfg.train.area.timeframes
         }
         for area_descriptor in as_completed(future_area_descriptor):
             start_date, end_date = future_area_descriptor[area_descriptor]
@@ -79,7 +78,7 @@ def compute_area_descriptor(cfg: DictConfig) -> None:
 
     df = pd.concat(dfs)
 
-    aoi_name = f'area_{out_name.lower()}'
+    aoi_name = out_name.lower()
     descriptor_png = output_dir / f'{aoi_name}.png'
     log.info(f'Persisting descriptor visualization: {descriptor_png}')
     ax = df.plot(figsize=(25, 25), alpha=0.05, edgecolor='black', lw=0.7)
@@ -91,19 +90,14 @@ def compute_area_descriptor(cfg: DictConfig) -> None:
     descriptor_csv = output_dir / f'{aoi_name}.csv'
     df.to_csv(descriptor_csv, index=False)
 
-    log.info(f'Area descriptor created. Make sure to add {aoi_name[5:]} to cfg.data.descriptor.area.')
-
 
 def retrieve_area(cfg: DictConfig) -> Tuple[gpd.GeoDataFrame, str]:
     """Retrieve AOI either from a file or by geocoding a name."""
-    config_path = f'{HydraConfig.get().job.config_name}.yaml'
-    aoi_file = getattr(cfg.area, 'aoi_file', None)
-    aoi_name = getattr(cfg.area, 'aoi_name', None)
+    aoi_file = getattr(cfg, 'aoi_file', None)
+    aoi_name = getattr(cfg, 'aoi_name', None)
 
     if not aoi_file and not aoi_name:
-        raise ValueError(
-            f"Neither 'aoi_file' nor 'aoi_name' is provided in the configuration. Edit configuration in {config_path}."
-        )
+        raise ValueError("Neither 'aoi_file' nor 'aoi_name' is provided in the configuration")
 
     try:
         if aoi_file:
@@ -115,10 +109,10 @@ def retrieve_area(cfg: DictConfig) -> Tuple[gpd.GeoDataFrame, str]:
             return geocode_aoi(aoi_name)
 
     except FileNotFoundError:
-        raise FileNotFoundError(f'{aoi_file} not found. Edit configuration in {config_path}.')
+        raise FileNotFoundError(f'{aoi_file} not found')
 
     except Exception:
-        raise RuntimeError(f'Error retrieving AOI. Check config file {config_path}.')
+        raise RuntimeError('Error retrieving AOI')
 
 
 def geocode_aoi(aoi_name: str) -> Tuple[gpd.GeoDataFrame, str]:

@@ -1,17 +1,35 @@
 defaults:
   - _self_
-  - data: d12_regk_v2 # training data configuration file
-  - model: v1
-  - serve: local
-  - imagery: sentinel_hub  # 'sentinel_hub' or 'minio' or 'file_dir'
+  - logging
 
-# Directory where all intermediate data is being store.
+  # Training configuration (from this folder, include the following files)
+  - train/soil_sealing/v1:
+    - area_descriptor
+    - data
+    - imagery
+    - model
+    - label
+
+  # App (inference) configuration  (from this folder, include the following files)
+  - serve:
+    - app
+    - data
+    - imagery
+    - label
+
+# Directory where all intermediate data is being stored
 cache:
   dir: ./cache
   apply: False
 
+# Neptune ML artifactory configuration: https://docs.neptune.ai/
+neptune:
+  project: ${oc.env:NEPTUNE_PROJECT_ID}
+  api_token: ${oc.env:NEPTUNE_PROJECT_API_TOKEN}
+
+# Extra (generic) training config
 environment:
-  # Set to run the training proces in a deterministic fashion:
+  # Set to run the training process in a deterministic fashion:
   # - https://pytorch.org/docs/stable/generated/torch.use_deterministic_algorithms.html
   # - https://lightning.ai/docs/pytorch/stable/common/trainer.html#reproducibility
   deterministic: False
@@ -25,11 +43,3 @@ environment:
 hydra:
   run:
     dir: ./outputs/${hydra.job.name}/${now:%Y-%m-%d_%H-%M-%S}
-
-# Neptune ML artifactory configuration: https://docs.neptune.ai/
-neptune:
-  project: ${oc.env:NEPTUNE_PROJECT_ID}
-  api_token: ${oc.env:NEPTUNE_PROJECT_API_TOKEN}
-  mode: ${oc.env:NEPTUNE_MODE}
-  model:
-    key: LULC

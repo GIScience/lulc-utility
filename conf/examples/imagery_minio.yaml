@@ -13,11 +13,11 @@ minio_platform:
 # column which refers to the filenames of the images.
 # If you prefer to use a local file instead of one on minio, give the absolute path and prefix with `file:`. For example
 # `tile_spec_path: file:/home/user/planet-data/planet_quads.parquet`
-tile_spec_path: file:/home/dgatland/projects/climate-action/research-and-development/planet_data/planet_quads.parquet
+tile_spec_path: file:data/imagery/planet_quads.parquet
 
+# Either give a tile directory or a path to a custom tile reader function, with a `::` separator before the function
+# name. If `custom_reader` is provided, this takes priority.
 tile_reader:
-  # Either give a tile directory or a path to a custom tile reader function, with a `::` separator before the function
-  # name. If `custom_reader` is provided, this takes priority.
   custom_reader: conf/imagery/custom_minio_loader.py::open_tiles
   #tile_dir: by_country/germany/global_quarterly_2024q2_mosaic
 

@@ -49,24 +49,16 @@ Run `uv run --all-groups pytest` to run the tests.
 
 ## Configuration
 
-To use the utility, you require access to the external resources: [Neptune.ai](https://neptune.ai/)
-and [SentinelHub](https://www.sentinel-hub.com/).
-The following environmental variables are used by the utility:
-
-| ENV                       | Description                                                                                         |
-|---------------------------|-----------------------------------------------------------------------------------------------------|
-| MODEL_VERSION             | Name/Version of the model to use e.g. CA-LULC-21. Will use latest staging version if not specified. |
-| NEPTUNE_PROJECT_API_TOKEN | Token acquired from Neptune.ai dashboard (Get Token)                                                |
-| NEPTUNE_PROJECT_ID        | HeiGIT project id acquired from the Neptune.ai dashboard                                            |
-| NEPTUNE_MODE              | Any of https://docs.neptune.ai/api/connection_modes/ (only required for training)                   |
-| SENTINELHUB_API_ID        | Id acquired from SentinelHub dashboard                                                              |
-| SENTINELHUB_API_SECRET    | Token acquired from SentinelHub dashboard                                                           |
-| LOG_LEVEL                 | The minimum level for log messages                                                                  |
-
+To use the utility, you require access to [Neptune.ai](https://neptune.ai/) and other external services depending on
+the model you run.
+Secret keys and common configuration variables can be set in the `.env` file and are described in
+[`.env.template`](.env.template).
 Any environment variables that include special characters must be wrapped in single quotation marks (`''`).
 
-The training process can also be parametrized using relevant configuration files. Visit [`./conf/**/*.yaml`](conf) for
-reference.
+There are many more configuration files available in [`/conf/`](/conf/).
+Visit [`/conf/config.yaml`](/conf/config.yaml) to review and modify the configuration as required.
+Note that the config under `train` relates to training-specific configuration, while the config under `serve` is used
+by the inference API and should only be modified with caution.
 
 ## Training
 
@@ -84,96 +76,97 @@ Preparing a country-specific model should take around two days (GPU: GeForce 309
 
 ### Data preparation
 
-Other than setting the relevant area parameters in [`conf/area_descriptor.yaml`](conf/area_descriptor.yaml), the rest of
-the data preparation steps have been automated in scripts, as described below.
+To start training a new model, first create a config folder under [`/conf/train/`](/conf/train/) and update the default
+config path in [`/conf/config.yaml`](/conf/config.yaml).
+Then copy the relevant config files from [`/conf/examples/*.yaml`](/conf/examples/) and follow the comments from the
+examples to create your config files.
+
+After initial configuration of your training parameters, the following data preparation steps have been automated in scripts, as described below.
 
 #### Area
 
 To select the area on which the model will be trained, an **area descriptor** has to be prepared or computed.
 The area descriptor will generate a set of tiles to use during training.
-To automatically prepare the descriptor set relevant area parameters
-in [`conf/area_descriptor.yaml`](conf/area_descriptor.yaml) and run the following command:
+To automatically prepare the descriptor, set relevant area parameters
+in `conf/train/<YOUR_FOLDER>/area_descriptor.yaml` and run the following command:
 
 ```shell
-uv run python lulc/compute_area_descriptor.py
+uv run lulc/compute_area_descriptor.py
 ```
-
-Optionally, to sanity check the imagery that would be sourced for each of the tiles, run:
-
-```shell
-uv run python --env-file .env lulc/save_imagery.py
-```
-
-For just a sample, you can also create a smaller area descriptor file and provide the optional command line
-input `--area-file path/to/file`.
-Note that the `sentinel_hub` operator already caches the imagery requested, so one can also find the relevant tiff files
-in `/cache/imagery/sentinel_hub/...`.
-
-#### Ground truth labels
-
-OpenStreetMap LULC polygons are used as ground truth training labels
-via [this OSM2LULC mapping](data/label/label_v3.yaml).
-To edit the ground truth labels, create a new [data/label/label_*.yaml](data/label/) file, and update the
-`descriptor.label` value in [conf/data/*.yaml](conf/data/*.yaml) according to your new label file.
-
-Optionally, to export a single raster of your ground truth labels (for visual inspection and approval), run:
-
-```shell
-uv run --env-file .env python lulc/export_osm_labels.py
-```
-
-The raster files of ground truth labels will be saved
-to [cache/osm/_label-version_/_area-descriptor_/_label_.tiff](cache/osm/)
 
 The area descriptor (as a `csv`) and a visual representation of it (as `png`) will be saved
 to [`data/area/`](data/area/).
 
-#### Normalization
-
-Images need to be normalised to a similar range across sensor channels before they are used during model training.
-While normalisation for surface reflectance from S2 is straight forward, S1 needs an informed logic for normalisation,
-and the DEM should be locally normalised.
-Normalisation parameters can be set in the [`conf/data/*.yaml`](conf/data) (`data.normalize`).
-
-To recalculate a reasonable set of values for new datasets, one needs to run the following script
-(note that this will load all of the images in your area descriptor so can take some time):
+Optionally, to sanity check the imagery that would be sourced for each of the tiles, run:
 
 ```shell
-uv run --env-file .env python lulc/calculate_dataset_statistics.py
+uv run --env-file .env lulc/save_imagery.py
 ```
 
-#### Class weights
+To save just a small sample area, you can also create a smaller area descriptor file and provide the optional command
+line input `'train.area.aoi_file=data/area/test.csv'` (note the string wrapping).
 
-LULC data always contains class imbalance.
+Note that the `sentinel_hub` operator already caches the imagery requested, so if using Sentinel Hub, one can also find
+the relevant tiff files in `/cache/imagery/sentinel_hub/...`.
+
+#### Ground truth labels
+
+OpenStreetMap LULC polygons are used as ground truth training labels via the OSM2LULC mapping defined in
+`/conf/train/<YOUR_FOLDER>/label.yaml`.
+To define the ground truth labels, create a new `label.yaml` file in your training config.
+
+Optionally, to export a single raster of your ground truth labels (for visual inspection and approval) of your whole
+training area, run:
+
+```shell
+uv run --env-file .env lulc/export_osm_labels.py
+```
+
+The raster files of ground truth labels will be saved to the cache_dir.
+
+#### Normalization and class weights
+
+Images need to be normalised to a similar range across sensor channels before they are used during model training.
+
+LULC data also always contains class imbalance.
 In OSM, this imbalance can be aggravated through the data collection process.
 The model can make use of class weights to account for this problem by adjusting the loss function.
-Class weights are declared in the [`conf/data/*.yaml`](conf/data) (`data.class_weights`).
+The class weights are based on the spatial resolution of the training data and the resulting number of pixels that are
+attributed to each class.
 
-The [script above](#normalization) will also print the suggested class weights.
-These are based on the spatial resolution of the training data and the resulting number of pixels that are attributed to
-each class.
+To calculate a reasonable set of normalisation values and class weights for new datasets, one needs to run the following
+script (note that this will load all of the images in your area descriptor so can take some time):
+
+```shell
+uv run --env-file .env lulc/calculate_dataset_statistics.py
+```
+
+The resulting image normalisation parameters and class weights must be copied to `data.yaml` before training.
 
 ### Run
 
-Training can be run with the following commands (project root as working DIR):
+Finally, after setting up the configuration, training can be run with the following command:
 
 ```shell
-uv run --env-file .env python lulc/train.py
+uv run --env-file .env lulc/train.py
 ```
 
 ## Serve
 
-It will spawn a REST API locally to serve the predictions for the model trained above.
-Before starting the API, please check whether the same environmental variables as in [Train](#train) are set [^1].
-To serve the machine learning model choose the desired model version from
-the [Model Registry](https://app.neptune.ai/o/HeiGIT/org/climate-action/models?shortId=CA-LULC&type=model),
-e.g.: `LULC-SEG-2` and modify the [`conf/serve/local.yaml`](conf/serve/local.yaml) file.
+To serve an inference session for a model trained in this utility, we spawn a REST API locally.
+Before starting the API, the configuration in [`/conf/serve/`](/conf/serve/) must be updated for the model being hosted.
+The relevant config files can simply be copied from the matching training configuration, and then changing the
+`# @package train.XYZ` header to `# @package serve.XYZ`.
 
-Copy the [`.env_template`](.env_template) file to `.env` and populate it.
+Also choose the desired model version from
+the [Model Registry](https://app.neptune.ai/o/HeiGIT/org/climate-action/models?shortId=CA-LULC&type=model),
+e.g.: `LULC-SEG-2` and modify the [`conf/serve/app.yaml`](conf/serve/app.yaml) file.
+
+Copy the [`.env_template`](.env_template) file to `.env` and populate it with the necessary fields.
 Then start the application:
 
 ```shell
-uv run --group deploy --no-dev --env-file .env python app/api.py
+uv run --group deploy --no-dev --env-file .env app/api.py
 ```
 
 > Go to [localhost:8000](http://localhost:8000/docs) to see the API in action.
@@ -205,12 +198,6 @@ docker build . --tag repo.heigit.org/climate-action/lulc-utility:devel
 docker image push repo.heigit.org/climate-action/lulc-utility:devel
 ```
 
-## Development
-
-### Linting
-
-Make sure to install the pre-commit hooks before contributing to the project: `uv run pre-commit install`.
-
 ## Releasing a new utility version
 
 1. Update the [CHANGELOG.md](CHANGELOG.md).
@@ -220,9 +207,6 @@ Make sure to install the pre-commit hooks before contributing to the project: `u
 3. Update the version attribute in the [pyproject.toml](pyproject.toml)
 4. Create a [release]((https://docs.gitlab.com/ee/user/project/releases/#create-a-release-in-the-releases-page)) on
    GitLab, including a changelog
-
-[^1]: Note that for Neptune.ai, `debug` mode does not work. We suggest using `read-only` for testing.
-
 
 ---
 <img src="docs/logo.png"  width="40%">

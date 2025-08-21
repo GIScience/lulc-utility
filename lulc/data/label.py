@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 
 import pandas as pd
-import yaml
+from omegaconf import DictConfig
 from PIL import ImageColor
 from pydantic import BaseModel, Field
 
@@ -69,20 +69,18 @@ def hex_to_rgb_color(color: str) -> Tuple[int, int, int]:
     return r, g, b
 
 
-def resolve_osm_labels(data_dir: Path, label_descriptor_version: str) -> List[LabelDescriptor]:
-    with open(str(data_dir / 'label' / f'label_{label_descriptor_version}.yaml'), 'r') as file:
-        labels_descriptor = pd.DataFrame(yaml.safe_load(file)['osm'])
+def resolve_osm_labels(data_dir: Path, label_filter: DictConfig) -> List[LabelDescriptor]:
+    labels_descriptor = pd.DataFrame(label_filter['osm'])
 
-        labels_descriptor['raster_value'] = pd.RangeIndex(1, len(labels_descriptor) + 1)
-        labels_descriptor['color_code'] = labels_descriptor['color_code'].apply(hex_to_rgb_color).values
-        labels_descriptor = labels_descriptor.rename(columns={'color_code': 'color'})
-        return [BACKGROUND_DESCRIPTOR] + [LabelDescriptor(**row) for _, row in labels_descriptor.iterrows()]
+    labels_descriptor['raster_value'] = pd.RangeIndex(1, len(labels_descriptor) + 1)
+    labels_descriptor['color_code'] = labels_descriptor['color_code'].apply(hex_to_rgb_color).values
+    labels_descriptor = labels_descriptor.rename(columns={'color_code': 'color'})
+    return [BACKGROUND_DESCRIPTOR] + [LabelDescriptor(**row) for _, row in labels_descriptor.iterrows()]
 
 
-def resolve_corine_labels(data_dir: Path, label_descriptor_version: str) -> List[LabelDescriptor]:
-    with open(str(data_dir / 'label' / f'label_{label_descriptor_version}.yaml'), 'r') as file:
-        labels_descriptor = pd.DataFrame(yaml.safe_load(file)['corine'])
+def resolve_corine_labels(data_dir: Path, label_filter: DictConfig) -> List[LabelDescriptor]:
+    labels_descriptor = pd.DataFrame(label_filter['corine'])
 
-        labels_descriptor['raster_value'] = pd.RangeIndex(1, len(labels_descriptor) + 1)
-        labels_descriptor['color'] = labels_descriptor['color'].apply(hex_to_rgb_color).values
-        return [BACKGROUND_DESCRIPTOR] + [LabelDescriptor(**row) for _, row in labels_descriptor.iterrows()]
+    labels_descriptor['raster_value'] = pd.RangeIndex(1, len(labels_descriptor) + 1)
+    labels_descriptor['color'] = labels_descriptor['color'].apply(hex_to_rgb_color).values
+    return [BACKGROUND_DESCRIPTOR] + [LabelDescriptor(**row) for _, row in labels_descriptor.iterrows()]
