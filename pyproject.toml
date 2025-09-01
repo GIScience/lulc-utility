@@ -33,7 +33,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "albumentations>=1.4.24,<2",
+    "albumentations>=2.0.8,<3",
     "contextily>=1.6.2,<2",
     "coolname>=2.2.0,<3",
     "geopy>=2.4.1,<3",
