@@ -50,7 +50,7 @@ dev = [
 ]
 test = [
     "httpx>=0.28.1,<1",
-    "pytest>=7.4.2,<8",
+    "pytest>=8.4.2,<9",
     "pytest-cov>=6.3.0,<7",
 ]
 deploy = [
