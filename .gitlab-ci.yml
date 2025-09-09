@@ -43,7 +43,7 @@ test_coverage_threshold:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == 'push'
   image:
-    name: python:3.11.5
+    name: python:3.13.7
   before_script:
     - apt-get update && apt-get install -y bc
   script:
