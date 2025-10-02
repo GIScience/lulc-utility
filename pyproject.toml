@@ -51,7 +51,7 @@ dev = [
 test = [
     "httpx>=0.28.1,<1",
     "pytest>=8.4.2,<9",
-    "pytest-cov>=6.3.0,<7",
+    "pytest-cov>=7,<8",
 ]
 deploy = [
     "fastapi>=0.116.1,<1",
