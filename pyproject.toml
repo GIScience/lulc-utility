@@ -59,7 +59,7 @@ deploy = [
     "scipy>=1.16.1,<2",
     "starlette>=0.47.3,<1",
     "uvicorn>=0.35.0,<1",
-    "webcolors>=24.11.1,<25",
+    "webcolors>=25.10,<26",
 ]
 
 [tool.ruff]
