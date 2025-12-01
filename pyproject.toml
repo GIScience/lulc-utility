@@ -50,7 +50,7 @@ dev = [
 ]
 test = [
     "httpx>=0.28.1,<1",
-    "pytest>=8.4.2,<9",
+    "pytest>=9.0.1,<10",
     "pytest-cov>=7,<8",
 ]
 deploy = [
@@ -87,7 +87,7 @@ select=[
     "RUF100", "RUF101",
 ]
 
-[tool.pytest.ini_options]
+[tool.pytest]
 markers = [
     "external: marks tests that potentially make external API calls (deselect with '-m \"not external\"')",
 ]
