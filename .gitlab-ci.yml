@@ -121,7 +121,7 @@ build_release:
 
 deploy_staging:
   stage: deploy
-  tags: [ k8s ]
+  tags: [ k8s-kta ]
   needs:
     - build_staging
   rules:
@@ -130,7 +130,7 @@ deploy_staging:
   script:
     - |
       argocd app actions \
-        run argocd/${ARGOCD_STAGING_APPLICATION_NAME} \
+        run ca-staging/${ARGOCD_STAGING_APPLICATION_NAME} \
         restart --kind Deployment \
         --server ${ARGOCD_SERVER} \
         --auth-token ${ARGOCD_AUTH_TOKEN}\
