@@ -17,10 +17,12 @@ minio_platform:
 # `tile_spec_path: file:/home/user/planet-data/planet_quads.parquet`
 tile_spec_path: file:data/imagery/planet_quads.parquet
 
+# Either give:
+#   Option 1 (`tile_dir`): a tile directory in minio containing the tiles
+#   Option 2 (`custom_reader`): a module path to a custom tile reader function, with `.` defining the module path and
+#     `::` separator before the function name. If `custom_reader` is provided, this takes priority.
 tile_reader:
-  # Either give a tile directory or a path to a custom tile reader function, with a `::` separator before the function
-  # name. If `custom_reader` is provided, this takes priority.
-  custom_reader: lulc/ops/custom_minio_loader.py::open_tiles
+  custom_reader: lulc.ops.custom_minio_loader::open_tiles_by_country
   #tile_dir: by_country/germany/global_quarterly_2024q2_mosaic
 
 # Resolution (in metres) of the tiles
