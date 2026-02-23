@@ -2,7 +2,6 @@ import importlib
 import logging
 import logging as rio_logging
 import shutil
-import sys
 import warnings
 from abc import ABC, abstractmethod
 from datetime import datetime
@@ -281,13 +280,8 @@ class MinioOperator(ImageryStore):
         self.bucket = minio_cfg.bucket
 
         if 'custom_reader' in tile_reader_cfg:
-            mod_name = 'minio_reader'
             mod, fn = tile_reader_cfg['custom_reader'].split('::')
-            spec = importlib.util.spec_from_file_location(mod_name, mod)
-            module = importlib.util.module_from_spec(spec)
-            sys.modules[mod_name] = module
-            spec.loader.exec_module(module)
-
+            module = importlib.import_module(mod)
             self.open_tiles = partial(getattr(module, fn), self)
 
         else:
