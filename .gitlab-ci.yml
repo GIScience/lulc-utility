@@ -62,7 +62,7 @@ optional_linting:
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
   image:
-    name: ghcr.io/astral-sh/uv:0.9-debian
+    name: python:3.13
   variables:
     PRE_COMMIT_HOME: "$CI_PROJECT_DIR/.cache/pre-commit"
   cache:
@@ -71,9 +71,9 @@ optional_linting:
       - $PRE_COMMIT_HOME
       - .venv
   before_script:
-    - uv add pre-commit
+    - pip install pre-commit
   script:
-    - uv run pre-commit run -c .pre-commit-config-optional-linting.yaml --all-files
+    - pre-commit run -c .pre-commit-config-optional-linting.yaml --all-files
   allow_failure:
     exit_codes:
       - 1
