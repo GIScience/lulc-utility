@@ -15,7 +15,7 @@ from app.logger import log_config, log_level, onnx_log_level
 from app.route import health, segment, uncertainty
 from lulc.data.label import resolve_corine_labels, resolve_osm_labels
 from lulc.data.tx.array import AdjustShape, NanToNum, Normalize, Stack
-from lulc.model.ops.download import NeptuneModelDownload
+from lulc.model.ops.mlflow_registry import MLflowModelRegistry
 from lulc.ops.imagery_store_operator import resolve_imagery_store
 from lulc.ops.osm_operator import OhsomeOps
 
@@ -43,14 +43,12 @@ async def configure_dependencies(app: FastAPI):
     app.state.imagery_store, tr = resolve_imagery_store(cfg.serve.imagery, cache_dir=Path(cfg.cache.dir))
     app.state.osm = OhsomeOps(cache_dir=Path(cfg.cache.dir))
 
-    registry = NeptuneModelDownload(
-        model_key=cfg.serve.app.neptune.model_key,
-        project=cfg.neptune.project,
-        api_key=cfg.neptune.api_token,
+    registry = MLflowModelRegistry(
+        tracking_uri=cfg.mlflow_registry.tracking_uri,
+        model_name=cfg.serve.app.mlflow_registry.model_name,
         cache_dir=Path(cfg.cache.dir),
     )
-
-    onnx_model, label_descriptor_version = registry.download_model_version(cfg.serve.app.neptune.model_version)
+    onnx_model = registry.download_model(model_version=cfg.serve.app.mlflow_registry.model_version)
 
     app.state.osm_labels = resolve_osm_labels(Path(cfg.serve.data.dir), cfg.serve.label)
     app.state.osm_cmap = dict(enumerate([d.color for d in app.state.osm_labels]))
@@ -63,7 +61,7 @@ async def configure_dependencies(app: FastAPI):
     options.enable_cpu_mem_arena = False
     options.enable_mem_reuse = False
     options.log_severity_level = onnx_log_level
-    app.state.inference_session = InferenceSession(str(onnx_model), sess_options=options)
+    app.state.inference_session = InferenceSession(onnx_model, sess_options=options)
 
     def tx(x):
         log.debug('Transforming imagery')

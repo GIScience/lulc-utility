@@ -10,7 +10,7 @@ from coolname import generate_slug
 from hydra.core.hydra_config import HydraConfig
 from lightning import seed_everything
 from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
-from lightning.pytorch.loggers import NeptuneLogger
+from lightning.pytorch.loggers import MLFlowLogger
 from lightning.pytorch.tuner import Tuner
 from matplotlib import pyplot as plt
 from omegaconf import DictConfig, OmegaConf
@@ -20,7 +20,7 @@ from lulc.data.dataset import AreaDataset
 from lulc.data.module import AreaDataModule
 from lulc.data.tx.array import Normalize
 from lulc.model.model import SegformerModule
-from lulc.model.ops.registry import NeptuneModelRegistry
+from lulc.model.ops.mlflow_registry import MLflowModelRegistry
 from lulc.monitoring.energy import EnergyContext
 from lulc.ops.imagery_store_operator import resolve_imagery_store
 
@@ -43,24 +43,31 @@ def train(cfg: DictConfig) -> None:
         torch.use_deterministic_algorithms(True, warn_only=True)
 
     log.info(f'Model training initiated: {run_name}')
-    neptune_logger = NeptuneLogger(
-        name=run_name,
-        project=cfg.neptune.project,
-        api_key=cfg.neptune.api_token,
-        log_model_checkpoints=False,
-        mode=cfg.train.model.neptune.mode,
-        prefix='',
+    # GitLab implementation of MLflow can't link models to experiments. When models are registered, a run is
+    # automatically registered under the experiment name `[model]{model_name}`. We use this same syntax to force
+    # experiments and their registered models to at least exist in the same experiment space.
+    experiment_name = f'[model]{cfg.train.model.mlflow_registry.model_name}'
+    mlflow_logger = MLFlowLogger(
+        experiment_name=experiment_name,
+        run_name=run_name,
+        log_model=False,
+        tracking_uri=cfg.mlflow_registry.tracking_uri,
     )
     area_descriptor = getattr(cfg.train.area, 'aoi_file', getattr(cfg.train.area, 'aoi_name', None))
-    neptune_logger.log_hyperparams(params=cfg.train.model)
-    neptune_logger.experiment['data/area'] = area_descriptor
-    neptune_logger.experiment['data/label'] = cfg.train.label.descriptor
-    neptune_logger.experiment['data/imagery'] = cfg.train.imagery.operator
+    mlflow_logger.log_hyperparams(params=cfg.train.model)
+    mlflow_logger.experiment.log_param(run_id=mlflow_logger.run_id, key='data/area', value=area_descriptor)
+    mlflow_logger.experiment.log_param(run_id=mlflow_logger.run_id, key='data/label', value=cfg.train.label.descriptor)
+    mlflow_logger.experiment.log_param(
+        run_id=mlflow_logger.run_id, key='data/imagery', value=cfg.train.imagery.operator
+    )
+    mlflow_logger.experiment.log_param(
+        run_id=mlflow_logger.run_id, key='label_descriptor_version', value=cfg.train.label.descriptor
+    )
 
     log.info(f'Configuring remote sensing imagery store: {cfg.train.imagery.operator}')
     imagery_store, tr = resolve_imagery_store(cfg.train.imagery, cache_dir=Path(cfg.cache.dir))
 
-    with EnergyContext(neptune_logger.experiment, enable_tracking=cfg.environment.energy_tracker) as energy_context:
+    with EnergyContext(mlflow_logger, enable_tracking=cfg.environment.energy_tracker) as energy_context:
         log.info(f'Initializing dataset (area: {area_descriptor}, label: {cfg.train.label.descriptor})')
 
         dataset = AreaDataset(
@@ -114,7 +121,7 @@ def train(cfg: DictConfig) -> None:
         model_checkpoint = ModelCheckpoint(dirpath=f'{output_dir}/checkpoints', save_top_k=2, monitor='val/epoch/loss')
 
         trainer = pl.Trainer(
-            logger=neptune_logger,
+            logger=mlflow_logger,
             max_epochs=cfg.train.model.max_epochs,
             callbacks=[early_stopping, model_checkpoint],
             log_every_n_steps=cfg.train.model.log_every_n_steps,
@@ -131,25 +138,26 @@ def train(cfg: DictConfig) -> None:
         trainer.fit(model=model, datamodule=datamodule)
 
         log.info(f'Checking-out best model: {model_checkpoint.best_model_path}')
-        model = SegformerModule.load_from_checkpoint(model_checkpoint.best_model_path, **params)
+        model = SegformerModule.load_from_checkpoint(model_checkpoint.best_model_path, weights_only=False, **params)
 
         log.info('Performing model evaluation')
         energy_context.record('test')
+        # Sometimes the next step fails because it tries to log hyperparameters that were already logged, so turn off
+        # autologging of hyperparams to avoid failure.
+        trainer.enable_autolog_hparams = False
         trainer.test(model=model, datamodule=datamodule)
 
         log.info(f'Model training completed: {run_name}')
-        registry = NeptuneModelRegistry(
-            model_key=cfg.train.model.neptune.model_key,
-            project=cfg.neptune.project,
-            api_key=cfg.neptune.api_token,
+        registry = MLflowModelRegistry(
+            tracking_uri=cfg.mlflow_registry.tracking_uri,
+            model_name=cfg.train.model.mlflow_registry.model_name,
             cache_dir=Path(cfg.cache.dir),
         )
         energy_context.record('register')
         registry.register_version(
             model=model,
             run_name=run_name,
-            run_url=neptune_logger.experiment.get_url(),
-            label_descriptor_version=cfg.train.label.descriptor,
+            run_id=mlflow_logger.run_id,
         )
 
 

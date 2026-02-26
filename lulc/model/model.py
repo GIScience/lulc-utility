@@ -6,7 +6,6 @@ import lightning.pytorch as pl
 import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as nn_functional
-from neptune.types import File
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torchmetrics import Accuracy, F1Score, JaccardIndex, MeanMetric, Precision, Recall
@@ -204,7 +203,9 @@ class SegformerModule(pl.LightningModule):
         for metric_name, metric in self.metrics[phase].items():
             if isinstance(metric, PlotMetric):
                 fig = metric.plot()
-                self.logger.experiment[f'{phase}/epoch/{metric_name}'].append(File.as_image(fig))
+                self.logger.experiment.log_figure(
+                    self.logger.run_id, fig, f'{phase}/epoch/{metric_name}/{self.current_epoch}.png'
+                )
                 plt.close(fig)
                 plt.cla()
             else:
@@ -214,8 +215,7 @@ class SegformerModule(pl.LightningModule):
     def __publish_images(self, phase: str):
         images = torch.clamp(self.images[phase], min=0.0, max=1.0).cpu().numpy()
         for idx in range(min(images.shape[0], self.max_image_samples)):
-            image = File.as_image(images[idx])
-            self.logger.experiment[f'{phase}/sample/image_{idx}'].append(image)
+            self.logger.experiment.log_image(self.logger.run_id, images[idx], f'{phase}/sample/image_{idx}.png')
 
         del self.images[phase]
 

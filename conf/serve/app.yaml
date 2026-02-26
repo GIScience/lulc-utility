@@ -4,11 +4,11 @@
 host: localhost
 port: 8000
 
-neptune:
-  model_key: LULC
-  # Served model version, e.g. CA-LULC-21
-  # If none it will be automatically resolved to latest staging model
-  model_version: ${oc.env:MODEL_VERSION,null}
+mlflow_registry:
+  model_name: LULC
+  # Served model version, e.g. 1.0.0 or latest.
+  # If none it will be automatically resolved to latest released version.
+  model_version: ${oc.env:MODEL_VERSION,latest}
 
 # Number of predictions stored in an ephemeral cache.
 # Used as an idempotency mechanism.

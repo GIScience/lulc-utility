@@ -1,7 +1,7 @@
 import logging
 from tempfile import TemporaryDirectory
 
-from neptune import Run
+from lightning.pytorch.loggers import MLFlowLogger
 from pyJoules.device import DeviceFactory
 from pyJoules.energy_meter import EnergyMeter
 from pyJoules.handler.pandas_handler import PandasHandler
@@ -10,8 +10,8 @@ log = logging.getLogger(__name__)
 
 
 class EnergyContext:
-    def __init__(self, experiment: Run, init_tag='init', enable_tracking=False):
-        self.experiment = experiment
+    def __init__(self, logger: MLFlowLogger, init_tag='init', enable_tracking=False):
+        self.logger = logger
         self.init_tag = init_tag
         self.handler = PandasHandler()
         self.enable_tracking = enable_tracking
@@ -41,7 +41,8 @@ class EnergyContext:
 
             with TemporaryDirectory() as temp_dir:
                 energy_trace_df.to_csv(f'{temp_dir}/df.csv', index=False)
-                self.experiment['monitoring/energy'].upload(f'{temp_dir}/df.csv')
-                self.experiment.sync()
+                self.logger.experiment.log_artifact(
+                    self.logger.run_id, f'{temp_dir}/df.csv', artifact_path='monitoring/energy'
+                )
         else:
             log.warning('No readable devices to publish energy consumption data')
