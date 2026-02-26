@@ -1,12 +1,13 @@
 import logging
 import os
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import mlflow
 import numpy as np
-import torch
 
-from lulc.model.model import SegformerModule
+if TYPE_CHECKING:
+    from lulc.model.model import SegformerModule
 
 log = logging.getLogger(__name__)
 
@@ -25,11 +26,16 @@ class MLflowModelRegistry:
         if not self.cache_dir.exists():
             os.makedirs(self.cache_dir, exist_ok=True)
 
-    def register_version(self, model: SegformerModule, run_name: str, run_id: str) -> None:
+    def register_version(
+        self,
+        model: 'SegformerModule',  # typing as annotation to reduce deployment dependencies
+        run_name: str,
+        run_id: str,
+    ) -> None:
         model_path = self.cache_dir / f'{run_name}.onnx'
         log.info(f'Persisting temporary onnx model file in: {model_path}')
         onnx_model = model.to_onnx(
-            input_sample=torch.zeros((1, model.configuration.num_channels, 1024, 1024)),
+            input_sample=np.zeros((1, model.configuration.num_channels, 1024, 1024)),
             dynamic_axes={'imagery': [2, 3], 'labels': [1, 2]},
             input_names=['imagery'],
             output_names=['labels'],
