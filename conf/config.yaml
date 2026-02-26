@@ -22,10 +22,8 @@ cache:
   dir: ./cache
   apply: False
 
-# Neptune ML artifactory configuration: https://docs.neptune.ai/
-neptune:
-  project: ${oc.env:NEPTUNE_PROJECT_ID}
-  api_token: ${oc.env:NEPTUNE_PROJECT_API_TOKEN}
+mlflow_registry:
+  tracking_uri: https://gitlab.heigit.org/api/v4/projects/750/ml/mlflow/
 
 # Extra (generic) training config
 environment:

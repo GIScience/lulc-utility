@@ -49,10 +49,9 @@ Run `uv run --all-groups pytest` to run the tests.
 
 ## Configuration
 
-To use the utility, you require access to [Neptune.ai](https://neptune.ai/) and other external services depending on
-the model you run.
-Secret keys and common configuration variables can be set in the `.env` file and are described in
-[`.env.template`](.env.template).
+To use the utility, you require access to several external services, depending on the model run.
+Review the secret keys and common configuration variables in the [`.env.template`](.env_template) and create a local
+`.env` file accordingly.
 Any environment variables that include special characters must be wrapped in single quotation marks (`''`).
 
 There are many more configuration files available in [`/conf/`](/conf/).
@@ -60,13 +59,29 @@ Visit [`/conf/config.yaml`](/conf/config.yaml) to review and modify the configur
 Note that the config under `train` relates to training-specific configuration, while the config under `serve` is used
 by the inference API and should only be modified with caution.
 
+### Model Registry
+
+The utility is currently configured to use the model registry and experiment tracking
+of [GitLab](https://gitlab.heigit.org/climate-action/utilities/lulc-utility/-/ml/models).
+To work with this backend, you need to configure the tracking URI and tracking token.
+
+The **tracking URI** is set in the config files, and is specific to this repository in GitLab.
+As long as you are working in **this** repository, you can use the default tracking URI.
+If you clone this to another location, or want to store your models in another repository, you should get the
+appropriate tracking URI on GitLab by going to _Deploy > Model Registry > Create/Import Model > Import model using
+MLflow_ and copying the displayed `MLFLOW_TRACKING_URI`.
+
+The **tracking token** must be set as an environment variable, `MLFLOW_TRACKING_TOKEN`.
+To create a tracking token, in GitLab go to _Your avatar (top right) > Preferences > Personal access tokens > Add new
+token_ and create a token with `api` access.
+
 ## Training
 
 ### Methods
 
 OpenStreetMap LULC polygons are used as training labels via [this OSM2LULC mapping](data/label/label_v3.yaml).
-The model is trained locally and stored at [neptune.ai](https://app.neptune.ai/o/HeiGIT/org/climate-action/models). The
-feature space is constructed from [Sentinel 1, 2](https://sentinel.esa.int/web/sentinel/missions) and a DEM.
+The model is trained locally and stored on [GitLab](https://gitlab.heigit.org/climate-action/utilities/lulc-utility/-/ml/models).
+The feature space is constructed from [Sentinel 1, 2](https://sentinel.esa.int/web/sentinel/missions) and a DEM.
 
 
 The underlying semantic segmentation model is called [SegFormer](https://arxiv.org/abs/2105.15203).
@@ -159,10 +174,9 @@ The relevant config files can simply be copied from the matching training config
 `# @package train.XYZ` header to `# @package serve.XYZ`.
 
 Also choose the desired model version from
-the [Model Registry](https://app.neptune.ai/o/HeiGIT/org/climate-action/models?shortId=CA-LULC&type=model),
-e.g.: `LULC-SEG-2` and modify the [`conf/serve/app.yaml`](conf/serve/app.yaml) file.
+the [Model Registry](https://gitlab.heigit.org/climate-action/utilities/lulc-utility/-/ml/models),
+e.g.: `1.0.0` and set the `MODEL_VERSION` in your `.env` file accordingly.
 
-Copy the [`.env_template`](.env_template) file to `.env` and populate it with the necessary fields.
 Then start the application:
 
 ```shell

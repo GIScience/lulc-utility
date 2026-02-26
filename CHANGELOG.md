@@ -13,6 +13,7 @@ and this project mostly adheres to [Semantic Versioning](https://semver.org/spec
 
 ### Changed
 
+- model registry backend changed from Neptune AI to MLflow, because Neptune AI is closing its external services
 - environment and dependency management from `conda` to [`uv`](https://docs.astral.sh/uv/)
 - refactored `config` files to better isolate configuration for training vs serving the app, and to be more transparent
   about what config is used where ([#91](https://gitlab.heigit.org/climate-action/utilities/lulc-utility/-/issues/91))
