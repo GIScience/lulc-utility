@@ -13,7 +13,7 @@ ENV UV_LINK_MODE=copy
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --locked --no-dev --group deploy --no-install-project
+    uv sync --locked --no-dev --extra deploy --no-install-project
 
 COPY README.md README.md
 COPY app app
@@ -25,7 +25,7 @@ COPY lulc lulc
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --locked --no-dev --group deploy
+    uv sync --locked --no-dev --extra deploy
 
 ENV PATH="/app/.venv/bin:$PATH"
 

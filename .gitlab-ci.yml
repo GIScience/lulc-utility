@@ -21,7 +21,7 @@ unit_tests:
       - $PRE_COMMIT_HOME
       - UV_CACHE_DIR
   before_script:
-    - uv sync --locked --all-groups
+    - uv sync --locked --all-extras
   script:
     - uv run pre-commit run --all-files
     - uv run pytest -m "not external" --cov --cov-report term --cov-report xml:coverage.xml

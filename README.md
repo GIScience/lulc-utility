@@ -7,7 +7,7 @@ full workflow of:
 1. training a deep learning model for land-use and land-cover classes,
 2. registering and tracking the model in an online store and
 3. serving the model's predictions via a REST API which enables users to request LULC
-classifications for arbitrary areas and timestamps.
+   classifications for arbitrary areas and timestamps.
 
 The main reason for creating such a utility is to:
 
@@ -22,30 +22,21 @@ The main reason for creating such a utility is to:
 ## Install
 
 This Package uses [uv](https://docs.astral.sh/uv/c) for environment and package management.
-Environments are automatically used and packages updated when you `uv run` commands, but you can also manually trigger
-package installation with `uv sync --group [group]`.
+To install dependencies run `uv sync`.
+By default, only the dependencies common to model training and serving are installed.
+To install dependencies required for either of them run
 
-The `uv run` commands automatically invoke the environment, but you can also directly activate it with
-`source .venv/bin/activate` (and close it like normal with `deactivate`).
+```shell
+uv sync --extra deploy  # to only install deployment dependencies
+uv sync --extra train  # to only install model training dependencies
+uv sync --all-extras  # to install all extra dependencies
+```
+
 
 We highly suggest using a [CUDA](https://en.wikipedia.org/wiki/CUDA)-a compatible device to train the model.
 To check whether such a device is available on your machine, run `nvidia-smi` in the console.
 When you start the training script, the logs will include a line like `GPU available: True (cuda), used: True` if CUDA
 is available.
-
-## Development
-
-Note that the repository supports pre commit hooks defined in the `.pre-commit-config.yaml` file.
-For the description of each hook visit the documentation of:
-
-- [git pre-commit hooks](https://github.com/pre-commit/pre-commit-hooks)
-- [ruff pre-commit hooks](https://github.com/astral-sh/ruff-pre-commit)
-
-Run `uv run pre-commit install` to activate them.
-
-### Testing
-
-Run `uv run --all-groups pytest` to run the tests.
 
 ## Configuration
 
@@ -75,14 +66,29 @@ The **tracking token** must be set as an environment variable, `MLFLOW_TRACKING_
 To create a tracking token, in GitLab go to _Your avatar (top right) > Preferences > Personal access tokens > Add new
 token_ and create a token with `api` access.
 
+## Development
+
+Note that the repository supports pre commit hooks defined in the `.pre-commit-config.yaml` file.
+For the description of each hook visit the documentation of:
+
+- [git pre-commit hooks](https://github.com/pre-commit/pre-commit-hooks)
+- [ruff pre-commit hooks](https://github.com/astral-sh/ruff-pre-commit)
+
+Run `uv run pre-commit install` to activate them.
+
+### Testing
+
+Run `uv run pytest` to run the tests.
+Note that the tests require **all** optional dependency groups.
+
 ## Training
 
-### Methods
+**The following pipeline is for training models and requires the optional `train` dependencies.**
 
 OpenStreetMap LULC polygons are used as training labels via [this OSM2LULC mapping](data/label/label_v3.yaml).
-The model is trained locally and stored on [GitLab](https://gitlab.heigit.org/climate-action/utilities/lulc-utility/-/ml/models).
+The model is trained locally and stored
+on [GitLab](https://gitlab.heigit.org/climate-action/utilities/lulc-utility/-/ml/models).
 The feature space is constructed from [Sentinel 1, 2](https://sentinel.esa.int/web/sentinel/missions) and a DEM.
-
 
 The underlying semantic segmentation model is called [SegFormer](https://arxiv.org/abs/2105.15203).
 It has the ability to delineate homogenous regions precisely.
@@ -96,9 +102,10 @@ config path in [`/conf/config.yaml`](/conf/config.yaml).
 Then copy the relevant config files from [`/conf/examples/*.yaml`](/conf/examples/) and follow the comments from the
 examples to create your config files.
 
-After initial configuration of your training parameters, the following data preparation steps have been automated in scripts, as described below.
+After initial configuration of your training parameters, the following data preparation steps have been automated in
+scripts, as described below.
 
-#### Area
+#### Area description
 
 To select the area on which the model will be trained, an **area descriptor** has to be prepared or computed.
 The area descriptor will generate a set of tiles to use during training.
@@ -168,6 +175,8 @@ uv run --env-file .env lulc/train.py
 
 ## Serve
 
+**The following pipeline is for deploying the API and requires the optional `deploy` dependencies.**
+
 To serve an inference session for a model trained in this utility, we spawn a REST API locally.
 Before starting the API, the configuration in [`/conf/serve/`](/conf/serve/) must be updated for the model being hosted.
 The relevant config files can simply be copied from the matching training configuration, and then changing the
@@ -180,7 +189,7 @@ e.g.: `1.0.0` and set the `MODEL_VERSION` in your `.env` file accordingly.
 Then start the application:
 
 ```shell
-uv run --group deploy --no-dev --env-file .env app/api.py
+uv run --env-file .env app/api.py
 ```
 
 > Go to [localhost:8000](http://localhost:8000/docs) to see the API in action.
