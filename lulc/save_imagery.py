@@ -12,6 +12,7 @@ from omegaconf import DictConfig
 from pyproj import CRS
 from tqdm import tqdm
 
+from lulc.data.area import extract_area_name
 from lulc.ops.imagery_store_operator import resolve_imagery_store
 
 log_level = os.getenv('LOG_LEVEL', 'INFO')
@@ -23,9 +24,8 @@ config_dir = os.getenv('LULC_UTILITY_APP_CONFIG_DIR', str(Path('conf').absolute(
 
 @hydra.main(version_base=None, config_path='../conf', config_name='config')
 def cache_imagery(cfg: DictConfig) -> None:
-    area_descriptor = getattr(cfg.train.area, 'aoi_file', getattr(cfg.train.area, 'aoi_name', None))
-    area_descriptor_file = Path(cfg.train.area.output_dir) / f'{Path(area_descriptor).stem}.csv'
-    area_descriptor = pd.read_csv(area_descriptor_file)
+    area_name = extract_area_name(cfg.train.area)
+    area_descriptor = pd.read_csv(str(Path(cfg.train.area.output_dir) / f'{area_name}.csv'))
 
     log.info(f'Configuring remote sensing imagery store: {cfg.train.imagery.operator}')
     imagery_store, _ = resolve_imagery_store(cfg.train.imagery, cache_dir=Path(cfg.cache.dir))

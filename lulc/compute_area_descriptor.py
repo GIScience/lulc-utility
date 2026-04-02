@@ -2,19 +2,17 @@ import logging.config
 import os
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
-from typing import Tuple
 
 import contextily as cx
 import geopandas as gpd
 import hydra
 import pandas as pd
 import yaml
-from geopy.geocoders import Nominatim
 from matplotlib import pyplot as plt
 from omegaconf import DictConfig
-from shapely import wkt
 from tqdm import tqdm
 
+from lulc.data.area import retrieve_area
 from lulc.data.grid import GridCalculator
 
 log_level = os.getenv('LOG_LEVEL', 'INFO')
@@ -41,13 +39,14 @@ def compute_area_descriptor(cfg: DictConfig) -> None:
     land_mask = gpd.read_file('data/world_generalized.geojson')
     aoi_source, out_name = retrieve_area(cfg.train.area)
 
-    log.info(f'Computing area descriptors for {out_name}')
+    log.info(f'Computing area descriptors for {out_name.title()}')
     aoi_id_col = getattr(cfg.train.area, 'aoi_id_col', 'osm_id')
 
-    if cfg.train.area.target_aoi_ids:
+    targets = getattr(cfg.train.area, 'target_aoi_ids', None)
+    if targets:
         aoi_gdf = aoi_source[aoi_source[aoi_id_col].isin(cfg.train.area.target_aoi_ids)].copy()
         if not aoi_gdf.empty:
-            log.info('Filtering AOI by provided target_aoi_ids.')
+            log.info('Filtered AOI by provided target_aoi_ids.')
         else:
             log.info('None of the target_aoi_ids are present in the AOI object. Ignoring target_aoi_ids.')
             aoi_gdf = aoi_source.copy()
@@ -78,83 +77,18 @@ def compute_area_descriptor(cfg: DictConfig) -> None:
 
     df = pd.concat(dfs)
 
-    aoi_name = out_name.lower()
-    descriptor_png = output_dir / f'{aoi_name}.png'
+    descriptor_png = output_dir / f'{out_name}.png'
     log.info(f'Persisting descriptor visualization: {descriptor_png}')
     ax = df.plot(figsize=(25, 25), alpha=0.05, edgecolor='black', lw=0.7)
+    aoi_gdf.plot(ax=ax, facecolor='none', edgecolor='black', lw=1)
     cx.add_basemap(ax, crs=df.crs, source=cx.providers.CartoDB.Positron)
     plt.title(f'Area Descriptor for: {out_name.title()}')
     plt.savefig(descriptor_png, bbox_inches='tight', pad_inches=0)
     plt.close()
 
-    descriptor_csv = output_dir / f'{aoi_name}.csv'
+    descriptor_csv = output_dir / f'{out_name}.csv'
     df.to_csv(descriptor_csv, index=False)
-
-
-def retrieve_area(cfg: DictConfig) -> Tuple[gpd.GeoDataFrame, str]:
-    """Retrieve AOI either from a file or by geocoding a name."""
-    aoi_file = getattr(cfg, 'aoi_file', None)
-    aoi_name = getattr(cfg, 'aoi_name', None)
-
-    if not aoi_file and not aoi_name:
-        raise ValueError("Neither 'aoi_file' nor 'aoi_name' is provided in the configuration")
-
-    try:
-        if aoi_file:
-            aoi_gdf = gpd.read_file(aoi_file)
-            out_name = Path(aoi_file).stem.replace(' ', '_')
-            return aoi_gdf, out_name
-
-        else:
-            return geocode_aoi(aoi_name)
-
-    except FileNotFoundError:
-        raise FileNotFoundError(f'{aoi_file} not found')
-
-    except Exception:
-        raise RuntimeError('Error retrieving AOI')
-
-
-def geocode_aoi(aoi_name: str) -> Tuple[gpd.GeoDataFrame, str]:
-    """Geocode the AOI name to retrieve its object."""
-    log.info(f'Searching for location: {aoi_name}')
-    geolocator = Nominatim(user_agent='ClimateAction/LULC')
-    locations = geolocator.geocode(aoi_name, geometry='wkt', exactly_one=False)
-
-    if not locations:
-        raise ValueError(f'No locations found for "{aoi_name}".')
-
-    if len(locations) > 1:
-        log.info(f'Multiple locations found for "{aoi_name}":')
-        for idx, loc in enumerate(locations):
-            print(f'  [{idx}] {getattr(loc, "address", str(loc))}')
-        while True:
-            try:
-                selection = int(input(f'Select index (0-{len(locations) - 1}): '))
-                if 0 <= selection < len(locations):
-                    location = locations[selection]
-                    break
-                log.warning('Invalid input.')
-            except ValueError:
-                log.warning('Invalid input. Enter a number.')
-    else:
-        location = locations[0]
-
-    location_id = getattr(location, 'osm_id', None)
-    location_name = str(location)
-    location_address = getattr(location, 'address', None)
-    log.info(f'Found: {location_address}; OSM ID {location_id}.')
-
-    aoi_gdf = gpd.GeoDataFrame(
-        {
-            'osm_id': [location_id],
-            'name': [location_name],
-            'geometry': [wkt.loads(location.raw['geotext'])],
-        },
-        crs='EPSG:4326',
-    )
-    out_name = aoi_name.strip().split(',')[0].replace(' ', '_')
-    return aoi_gdf, out_name
+    log.info(f'Area descriptor file saved to {descriptor_csv}.')
 
 
 def build_grid_cells(

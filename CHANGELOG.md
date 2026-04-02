@@ -7,6 +7,19 @@ and this project mostly adheres to [Semantic Versioning](https://semver.org/spec
 
 ## [Unreleased](https://gitlab.heigit.org/climate-action/utilities/lulc-utility/-/compare/1.2.0...main)
 
+## Fixed
+
+- `compute_area_descriptor` now handles the config even if `target_aoi_ids` is not provided.
+
+## Changed
+
+- improvements to `compute_area_descriptor` script to include better logging and visualisation of collected area, and
+  option to provide a custom AOI name.
+
+## Added
+
+- option to provide a list of area names in the `area_descriptor` config, to geocode all of these.
+
 ## [1.2.0](https://gitlab.heigit.org/climate-action/utilities/lulc-utility/-/releases/1.2.0) - 2026-02-26
 
 ### Fixed

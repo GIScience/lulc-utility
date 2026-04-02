@@ -1,9 +1,8 @@
 # @package train.model
 
-# Neptune config
-neptune:
-  model_key: LULC
-  mode: ${oc.env:NEPTUNE_TRAIN_MODE}
+# MLflow Model Registry config
+mlflow_registry:
+  model_name: LULC
 
 # Number of imagery input channels
 num_channels: 13

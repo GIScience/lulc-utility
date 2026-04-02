@@ -1,0 +1,117 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      User-Agent:
+      - ClimateAction/LULCUtility
+    method: GET
+    uri: https://nominatim.openstreetmap.org/search?q=123foo%2C+Atlantis&format=json&accept-language=en&polygon_text=1
+  response:
+    body:
+      string: '[]'
+    headers:
+      Accept-Ranges:
+      - bytes
+      Age:
+      - '961'
+      Connection:
+      - keep-alive
+      Content-Encoding:
+      - gzip
+      Content-Length:
+      - '22'
+      Date:
+      - Wed, 01 Apr 2026 16:57:04 GMT
+      Strict-Transport-Security:
+      - max-age=300
+      Vary:
+      - accept-language, Accept-Encoding
+      Via:
+      - 1.1 varnish
+      X-Cache:
+      - MISS, HIT
+      X-Cache-Hits:
+      - 0, 0
+      X-Served-By:
+      - cache-muc13981-MUC, cache-muc13957-MUC
+      X-Timer:
+      - S1775062624.432101,VS0,VE2
+      alt-svc:
+      - h3=":443";ma=86400,h3-29=":443";ma=86400,h3-27=":443";ma=86400
+      content-type:
+      - application/json; charset=utf-8
+      server:
+      - gunicorn/asgi
+      x-nominatim-server:
+      - vhagar.openstreetmap.org
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      User-Agent:
+      - ClimateAction/LULCUtility
+    method: GET
+    uri: https://nominatim.openstreetmap.org/search?q=Point+Nemo&format=json&accept-language=en&polygon_text=1
+  response:
+    body:
+      string: "[{\"place_id\":160827,\"licence\":\"Data \xA9 OpenStreetMap contributors,
+        ODbL 1.0. http://osm.org/copyright\",\"osm_type\":\"node\",\"osm_id\":9457300391,\"lat\":\"-49.0260312\",\"lon\":\"-123.4389150\",\"class\":\"place\",\"type\":\"locality\",\"place_rank\":25,\"importance\":0.06667666666666666,\"addresstype\":\"locality\",\"name\":\"Point
+        Nemo\",\"display_name\":\"Point Nemo\",\"boundingbox\":[\"-49.0360312\",\"-49.0160312\",\"-123.4489150\",\"-123.4289150\"],\"geotext\":\"POINT(-123.438915
+        -49.0260312)\"},{\"place_id\":396377248,\"licence\":\"Data \xA9 OpenStreetMap
+        contributors, ODbL 1.0. http://osm.org/copyright\",\"osm_type\":\"node\",\"osm_id\":11363394983,\"lat\":\"53.8784859\",\"lon\":\"-119.1239332\",\"class\":\"tourism\",\"type\":\"viewpoint\",\"place_rank\":30,\"importance\":5.034180209044049e-05,\"addresstype\":\"tourism\",\"name\":\"Point
+        Nemo\",\"display_name\":\"Point Nemo, Sidewinder, Hamlet of Grande Cache,
+        Municipal District of Greenview, Alberta, T0E 0Y0, Canada\",\"boundingbox\":[\"53.8784359\",\"53.8785359\",\"-119.1239832\",\"-119.1238832\"],\"geotext\":\"POINT(-119.1239332
+        53.8784859)\"}]"
+    headers:
+      Accept-Ranges:
+      - bytes
+      Age:
+      - '961'
+      Connection:
+      - keep-alive
+      Content-Encoding:
+      - gzip
+      Content-Length:
+      - '488'
+      Date:
+      - Wed, 01 Apr 2026 16:57:04 GMT
+      Strict-Transport-Security:
+      - max-age=300
+      Vary:
+      - accept-language, Accept-Encoding
+      Via:
+      - 1.1 varnish
+      X-Cache:
+      - MISS, HIT
+      X-Cache-Hits:
+      - 0, 0
+      X-Served-By:
+      - cache-muc13953-MUC, cache-muc13974-MUC
+      X-Timer:
+      - S1775062625.541537,VS0,VE1
+      alt-svc:
+      - h3=":443";ma=86400,h3-29=":443";ma=86400,h3-27=":443";ma=86400
+      content-type:
+      - application/json; charset=utf-8
+      server:
+      - gunicorn/asgi
+      x-nominatim-server:
+      - vhagar.openstreetmap.org
+    status:
+      code: 200
+      message: OK
+version: 1

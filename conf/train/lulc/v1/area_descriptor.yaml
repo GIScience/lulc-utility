@@ -1,8 +1,12 @@
 # @package train.area
+aoi_file: https://gisco-services.ec.europa.eu/distribution/v2/nuts/geojson/NUTS_RG_10M_2021_4326.geojson
+aoi_id_col: NUTS_ID
 
-# Source of the NUTS layer
-nuts_source: https://gisco-services.ec.europa.eu/distribution/v2/nuts/geojson/NUTS_RG_10M_2021_4326.geojson
-nuts_id_col: NUTS_ID
+aoi_name: RB Karlsruhe
+
+# Areas that will be incorporated into the dataset
+target_aoi_ids:
+  - DE12
 
 # Determine the initial grid of the split [osm, utm]
 # More: https://sentinelhub-py.readthedocs.io/en/latest/examples/large_area_utilities.html
@@ -31,15 +35,14 @@ timeframes:
   - [ 2023-08-01, 2023-08-30 ]
   - [ 2023-09-01, 2023-09-30 ]
 
-# Areas that will be incorporated into the dataset
-target_nuts_ids:
-  - DE12
-
-# Set the property to a value between 0-1 to enable random sampling (time frames scope)
+# Optional: Set the property to a value between 0-1 to enable random sampling (time frames scope)
 sampling_frac:
 
 # Directory where the descriptor will be placed after calculation
 output_dir: ./data/area
+
+# Set how much minimum land area each bounding box should cover
+land_area_share: 0.0
 
 # Additional split parameters
 split_params:

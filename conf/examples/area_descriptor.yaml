@@ -12,11 +12,17 @@ aoi_file: data/regierungsbezirk_karlsruhe.geojson
 aoi_id_col: osm_id
 target_aoi_ids:
   - 285864  # Heidelberg
-  - 62577  # Rhein-Neckar-Kreis
   - 62691  # Mannheim
+  - 62577  # Rhein-Neckar-Kreis
 
-# Option 2. Name: AOI can be provided as an aoi_name which will be geolocated through OSM
-aoi_name: Heidelberg
+# Option 2. Geocode: AOI(s) can be provided as aoi_geocode which will be geolocated through OSM
+aoi_geocode:
+- Heidelberg, Germany
+- Mannheim, Germany
+- Rhein-Neckar-Kreis
+
+# For both options, you can also specify how the resulting files and folders will be named
+aoi_name: MAHDRNK
 
 # For SentinelHub only: Research timespans. Only data from the declared period will be used during dataset computation.
 timeframes:
