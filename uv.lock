@@ -394,11 +394,11 @@ wheels = [
 
 [[package]]
 name = "coolname"
-version = "4.2.0"
+version = "5.0.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/8a/90/0cb2e364ed736c01790b264a2cafbe7702fc50090337ce37366e03384d20/coolname-4.2.0.tar.gz", hash = "sha256:b0f2d6d4654d627230e143f9efa5c5e1955b11e0cdd54211558c1170496f9f19", size = 38718, upload-time = "2026-04-11T17:26:13.142Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/fe/45/deae12f31934301a488df985880240a200119aca2e4b5ceba71d73bc5e86/coolname-5.0.0.tar.gz", hash = "sha256:594bc6c98ebc75ddd51c0ce10efbb5d2556c14eac60b5b36900dfdd5db20eecf", size = 45800, upload-time = "2026-04-23T06:04:50.824Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8d/9f/9aec78a18b64333f9a54d18f9d2f479d51c25bc715dc57e46c12bfd5ce21/coolname-4.2.0-py3-none-any.whl", hash = "sha256:6a67db5e3c3f1b196a9ad4563af118da0d962875ed9b6e8a6dfd96e045847c3a", size = 40130, upload-time = "2026-04-11T17:26:10.382Z" },
+    { url = "https://files.pythonhosted.org/packages/97/35/cf824e535233c432048bd7455b28808776471ab5861375772b2c98ea4cbd/coolname-5.0.0-py3-none-any.whl", hash = "sha256:b86eea9670aa0620965167d1bfadfe654fabec839a5b51e8da611c4a64f86192", size = 47368, upload-time = "2026-04-23T06:04:49.374Z" },
 ]
 
 [[package]]
@@ -1197,7 +1197,7 @@ test = [
 requires-dist = [
     { name = "albumentations", marker = "extra == 'train'", specifier = ">=2.0.8,<3" },
     { name = "contextily", marker = "extra == 'train'", specifier = ">=1.6.2,<2" },
-    { name = "coolname", marker = "extra == 'train'", specifier = ">=4,<5" },
+    { name = "coolname", marker = "extra == 'train'", specifier = ">=5,<6" },
     { name = "fastapi", marker = "extra == 'deploy'", specifier = ">=0.116.1,<1" },
     { name = "geocube", specifier = ">=0.7.1,<1" },
     { name = "geopandas", specifier = ">=1.1.1,<2" },
