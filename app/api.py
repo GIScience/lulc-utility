@@ -83,10 +83,11 @@ app.include_router(segment.router)
 app.include_router(uncertainty.router)
 app.include_router(health.router)
 
-if __name__ == '__main__':
+
+def start():
     log.info('Starting LULC Utility')
     uvicorn.run(
-        'api:app',
+        app,
         host='0.0.0.0',
         port=int(os.getenv('LULC_UTILITY_API_PORT', 8000)),
         root_path=os.getenv('ROOT_PATH', '/'),
@@ -94,3 +95,7 @@ if __name__ == '__main__':
         log_level=log_level.lower(),
         workers=int(os.getenv('LULC_UVICORN_WORKERS', 1)),
     )
+
+
+if __name__ == '__main__':
+    start()

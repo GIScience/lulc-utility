@@ -8,7 +8,7 @@ api_id: ${oc.env:SENTINELHUB_API_ID}
 api_secret: ${oc.env:SENTINELHUB_API_SECRET}
 
 # Directory which contains SentinelHub image acquisition and preprocessing descriptor.
-evalscript_dir: data/imagery
+evalscript_dir: conf/eval_scripts
 
 # Image acquisition and preprocessing descriptor name.
 evalscript_name: imagery_v2

@@ -1,34 +1,56 @@
-FROM ghcr.io/astral-sh/uv:0.12-debian
+FROM python:3.13-slim-bookworm AS python_base
 
-WORKDIR /lulc-utility
+# Install system-level shared libs needed by compiled deps (e.g. rasterio -> libexpat)
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && \
+    apt-get install -y --no-install-recommends libexpat1
 
-# Enable bytecode compilation for faster application startups
-ENV UV_COMPILE_BYTECODE=1
+# Create a dedicated user to run all tasks (as non-root)
+ARG UID=99
+RUN useradd -u $UID -ms /bin/bash lulc
+USER lulc
 
-# Copy from the cache instead of linking since it's a mounted volume
-ENV UV_LINK_MODE=copy
+ENV HOME=/home/lulc
+ENV WD=$HOME/package
+WORKDIR $WD
 
-# Temporarily mount uv.lock and pyproject.toml as we don't need them in runtime and they trigger package downloads
-# on startup if included in the filesystem
-RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=uv.lock,target=uv.lock \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+# Build stage: having a build stage means temp/cache files from the build aren't persisted in the final image
+FROM python_base AS builder
+
+ENV UV_HOME="~/.cache/uv"
+ENV PATH="$UV_HOME/bin:$PATH"
+
+# Install uv in an isolated venv to avoid conflicts with the package venv
+RUN --mount=type=cache,uid=$UID,target=$HOME/.cache/pip \
+    python3 -m venv $UV_HOME && \
+    $UV_HOME/bin/pip install uv==0.12.*
+
+# Copy from the cache instead of linking (required for using cache mount)
+ENV UV_LINK_MODE=copy \
+    UV_CACHE_DIR=$HOME/.cache/uv
+
+# Install project dependencies
+COPY pyproject.toml uv.lock ./
+RUN --mount=type=cache,uid=$UID,target=$UV_CACHE_DIR \
     uv sync --locked --no-dev --extra deploy --no-install-project
 
+# Install the project itself
 COPY README.md README.md
 COPY app app
 COPY conf conf
-COPY data data
 COPY lulc lulc
 
-# Install the project source code separately from its dependencies for optimal layer caching
-RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=uv.lock,target=uv.lock \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+RUN --mount=type=cache,uid=$UID,target=$UV_CACHE_DIR \
     uv sync --locked --no-dev --extra deploy
 
-ENV PATH="/app/.venv/bin:$PATH"
+# Deployment stage: a smaller image with only the required files
+FROM python_base AS deployment
 
-ENTRYPOINT ["uv", "run", "python", "app/api.py"]
+COPY --from=builder $WD $WD
+
+ENV PATH="$WD/.venv/bin:$PATH"
+
+ENTRYPOINT ["lulc"]
 
 EXPOSE 8000
