@@ -90,8 +90,8 @@ def __analyse(body: LulcWorkUnit, request: Request) -> ProcessingResult:
         corine_lulc_mapping=hashable_labels(request.app.state.corine_labels),
         threshold=body.threshold,
         area_coords=buffered_bbox,
-        start_date=body.start_date.isoformat(),
-        end_date=body.end_date.isoformat(),
+        start_date=body.start_date,
+        end_date=body.end_date,
         fusion_mode=body.fusion_mode,
     )
 

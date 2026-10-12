@@ -1,4 +1,5 @@
-from typing import Callable, Optional, Tuple
+from datetime import datetime
+from typing import Callable, Tuple
 
 import numpy as np
 from onnxruntime import InferenceSession
@@ -13,8 +14,8 @@ def tta_uncertainty(
     inference_session: InferenceSession,
     tx: Callable,
     area_coords: Tuple[float, float, float, float],
-    start_date: Optional[str],
-    end_date: str,
+    start_date: datetime,
+    end_date: datetime,
 ):
     """
     Calculates uncertainty based on prediction variance and Shannon entropy using the test time augmentation approach:

@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Tuple
 from unittest.mock import Mock
 
@@ -97,8 +98,8 @@ def test_analyse_when_fusion_various_fusion_modes(
         CORINE_LABEL_MAPPING,
         threshold=0.75,
         area_coords=(0, 0, 0, 0),
-        start_date='2024-04-01',
-        end_date='2024-04-01',
+        start_date=datetime(2024, 4, 1),
+        end_date=datetime(2024, 4, 1),
         fusion_mode=fusion_mode,
     )
     assert labels.shape == expected_labels_shape

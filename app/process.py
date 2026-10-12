@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 from enum import Enum
-from typing import Callable, Dict, Optional, Tuple
+from typing import Callable, Dict, Tuple
 
 import numpy as np
 import numpy.ma as ma
@@ -37,8 +37,8 @@ def analyse(
     corine_lulc_mapping: HashableDict[str, LabelDescriptor],
     threshold: float,
     area_coords: Tuple[float, float, float, float],
-    start_date: Optional[str],
-    end_date: str,
+    start_date: datetime,
+    end_date: datetime,
     fusion_mode: FusionMode,
 ):
     """
@@ -64,7 +64,7 @@ def analyse(
 
     try:
         if fusion_mode in [FusionMode.ONLY_CORINE, FusionMode.HARMONIZED_CORINE]:
-            if datetime.strptime(end_date, '%Y-%m-%d').year >= 1990:
+            if end_date.year >= 1990:
                 labels, imagery_size = imagery_store.labels(area_coords, end_date)
 
                 if fusion_mode == FusionMode.HARMONIZED_CORINE:
@@ -95,7 +95,7 @@ def __fusion(
     osm_lulc_mapping: dict,
     threshold: float,
     area_coords: Tuple[float, float, float, float],
-    date: str,
+    date: datetime,
     fusion_mode: FusionMode,
     logits: np.ndarray,
 ):

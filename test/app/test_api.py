@@ -1,5 +1,6 @@
 import io
-from datetime import datetime, timedelta
+import os
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -85,8 +86,8 @@ TEST_JSON_only_corine = {
     'fusion_mode': 'only_corine',
 }
 
-TODAY = datetime.now().date().isoformat()
-WEEK_BEFORE = (datetime.now() - timedelta(days=7)).date().isoformat()
+TODAY = datetime.now().date()
+WEEK_BEFORE = (datetime.now() - timedelta(days=7)).date()
 
 LABELS = [
     LabelDescriptor(
@@ -168,8 +169,8 @@ class TestImageryStore(ImageryStore):
     def imagery(
         self,
         area_coords: Tuple,
-        start_date: str,
-        end_date: str,
+        start_date: datetime,
+        end_date: datetime,
         resolution: int = 10,
     ) -> tuple[Dict[str, np.ndarray], tuple[int, int]]:
         self.last_start_date = start_date
@@ -184,12 +185,15 @@ class TestImageryStore(ImageryStore):
 
 class TestOhsomeOps(OhsomeOps):
     def __init__(self):
+        # We currently requires OHSOME_BASE_URL env var to be set
+        if os.environ['OHSOME_BASE_URL'] is None:
+            os.environ['OHSOME_BASE_URL'] = 'http://fake-url.org'
         super().__init__(Path('/tmp'))
 
     def labels(
         self,
         area_coords: Tuple[float, float, float, float],
-        time: str,
+        time: datetime,
         osm_lulc_mapping: Dict,
         target_size: Tuple[int, int],
     ) -> Dict[str, np.ndarray]:
@@ -237,8 +241,8 @@ def test_health(mocked_client):
 @pytest.mark.parametrize(
     'request_body, expected_start_date, expected_end_date',
     [
-        (TEST_JSON_start_end, '2023-05-01', '2023-06-01'),
-        (TEST_JSON_end_only, '2023-05-25', '2023-06-01'),
+        (TEST_JSON_start_end, date(2023, 5, 1), date(2023, 6, 1)),
+        (TEST_JSON_end_only, date(2023, 5, 25), date(2023, 6, 1)),
         (TEST_JSON_no_time, WEEK_BEFORE, TODAY),
         (TEST_JSON_favour_osm, WEEK_BEFORE, TODAY),
         (TEST_JSON_favour_model, WEEK_BEFORE, TODAY),

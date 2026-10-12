@@ -1,6 +1,7 @@
 import logging
 import uuid
 import warnings
+from datetime import datetime
 from functools import partial
 from typing import Optional, Tuple
 
@@ -20,8 +21,8 @@ class GridCalculator:
         aoi_gdf: gpd.GeoDataFrame,
         aoi_id_col: str,
         split_mode: str,
-        start_date: str,
-        end_date: str,
+        start_date: datetime,
+        end_date: datetime,
         zoom_level: int,
         bbox_size_m: Tuple[int, int],
         land_mask: gpd.GeoDataFrame,

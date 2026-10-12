@@ -1,5 +1,6 @@
 import hashlib
 import uuid
+from datetime import datetime
 from functools import partial
 from pathlib import Path
 from typing import Dict, Tuple
@@ -11,8 +12,7 @@ import rasterio
 import shapely
 import xarray
 from geocube.api.core import make_geocube
-from hydra.core.hydra_config import HydraConfig
-from ohsome import OhsomeClient
+from ohsome_py2.client import OhsomeClient
 from pyproj.aoi import AreaOfInterest
 from pyproj.database import query_utm_crs_info
 from rasterio.enums import Resampling
@@ -25,13 +25,12 @@ class OhsomeOps:
         self.cache_dir: Path = cache_dir
         self.resolution = resolution
 
-        log_dir = HydraConfig.get().runtime.output_dir if HydraConfig.initialized() else None
-        self.ohsome = OhsomeClient(user_agent='ClimateAction/LULC', log_dir=log_dir, log=HydraConfig.initialized())
+        self.ohsome = OhsomeClient(user_agent='ClimateAction/LULC')
 
     def labels(
         self,
         area_coords: Tuple[float, float, float, float],
-        time: str,
+        time: datetime,
         osm_lulc_mapping: Dict[str, LabelDescriptor],
         target_size: Tuple[int, int],
     ) -> Dict[str, np.ndarray]:
@@ -63,7 +62,7 @@ class OhsomeOps:
         self,
         bbox: Tuple[float, float, float, float],
         bbox_id: uuid.UUID,
-        time: str,
+        time: datetime,
         utm: str,
         height: int,
         width: int,
@@ -87,11 +86,12 @@ class OhsomeOps:
 
         if not raster_data.exists():
             filter_geometry = ' or '.join([f'geometry:{geom}' for geom in label.geometry_types])
-            vector_data = self.ohsome.elements.geometry.post(
-                bboxes=bbox,
-                time=time,
-                filter=f'({label.osm_filter}) and ({filter_geometry})',
-            ).as_dataframe()
+            vector_data = self.ohsome.features_extraction(
+                aoi=shapely.box(*bbox),
+                osm_filter=f'({label.osm_filter}) and ({filter_geometry})',
+                timestamp=time,
+            )
+            vector_data = vector_data.rename_geometry('geometry')
             extent_data = gpd.GeoDataFrame(
                 index=['extent'],
                 crs='epsg:4326',

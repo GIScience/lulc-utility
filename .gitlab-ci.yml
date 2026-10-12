@@ -24,7 +24,7 @@ unit_tests:
     - uv sync --locked --all-extras
   script:
     - uv run pre-commit run --all-files
-    - uv run pytest -m "not external" --cov --cov-report term --cov-report xml:coverage.xml
+    - uv run pytest --cov --cov-report term --cov-report xml:coverage.xml
     - uv cache prune --ci
   coverage: '/TOTAL.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
   artifacts:

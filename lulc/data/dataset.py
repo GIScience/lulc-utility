@@ -52,6 +52,10 @@ class AreaDataset(Dataset):
         self.resolution = resolution
 
         self.area_descriptor = pd.read_csv(str(data_dir / 'area' / f'{area_name}.csv'))
+        self.area_descriptor = self.area_descriptor.assign(
+            start_date=pd.to_datetime(self.area_descriptor['start_date']),
+            end_date=pd.to_datetime(self.area_descriptor['end_date']),
+        )
 
         label_descriptors = resolve_osm_labels(data_dir, label_filter)
         self.labels = [d.name for d in label_descriptors]

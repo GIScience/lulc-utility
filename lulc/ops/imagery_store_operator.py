@@ -9,7 +9,7 @@ from functools import partial
 from io import BytesIO
 from pathlib import Path
 from tarfile import ReadError
-from typing import Callable, Dict, List, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 import geopandas as gpd
 import numpy as np
@@ -49,8 +49,8 @@ class ImageryStore(ABC):
     def imagery(
         self,
         area_coords: Tuple[float, float, float, float],
-        start_date: str,
-        end_date: str,
+        start_date: datetime,
+        end_date: datetime,
         resolution: int = 10,
     ) -> Tuple[Dict[str, np.ndarray], Tuple[int, int]]:
         pass
@@ -58,7 +58,7 @@ class ImageryStore(ABC):
     def labels(
         self,
         area_coords: Tuple[float, float, float, float],
-        end_date: str,
+        end_date: datetime,
         resolution: int = 10,
     ) -> Tuple[np.ndarray, tuple[int, int]]:
         pass
@@ -99,8 +99,8 @@ class SentinelHubOperator(ImageryStore):
     def imagery(
         self,
         area_coords: Tuple[float, float, float, float],
-        start_date: str,
-        end_date: str,
+        start_date: datetime,
+        end_date: datetime,
         resolution: int = 10,
     ) -> tuple[Dict[str, np.ndarray], tuple[int, int]]:
         bbox = BBox(bbox=area_coords, crs=CRS.WGS84)
@@ -159,7 +159,7 @@ class SentinelHubOperator(ImageryStore):
     def labels(
         self,
         area_coords: Tuple[float, float, float, float],
-        end_date: str,
+        end_date: datetime,
         resolution: int = 10,
     ) -> Tuple[np.ndarray, tuple[int, int]]:
         """
@@ -170,7 +170,6 @@ class SentinelHubOperator(ImageryStore):
 
         corine_years = self.corine_years
 
-        end_date = datetime.strptime(end_date, '%Y-%m-%d')
         end_date = list(filter(lambda year: year <= end_date.year, corine_years))[-1]
         end_date = f'{end_date}-01-01'
 
@@ -246,8 +245,8 @@ class FileOperator(ImageryStore):
     def imagery(
         self,
         area_coords: Tuple[float, float, float, float],
-        start_date: str = '',
-        end_date: str = '',
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
         resolution: int = 10,
     ) -> Tuple[Dict[str, np.ndarray], Tuple[int, int]]:
         return _create_image_from_tiles(
@@ -325,8 +324,8 @@ class MinioOperator(ImageryStore):
     def imagery(
         self,
         area_coords: Tuple[float, float, float, float],
-        start_date: str = '',
-        end_date: str = '',
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
         resolution: int = 10,
     ) -> Tuple[Dict[str, np.ndarray], Tuple[int, int]]:
         return _create_image_from_tiles(

@@ -1,6 +1,7 @@
 import logging.config
 import os
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from datetime import datetime
 from pathlib import Path
 
 import contextily as cx
@@ -92,8 +93,8 @@ def compute_area_descriptor(cfg: DictConfig) -> None:
 
 
 def build_grid_cells(
-    start_date: str,
-    end_date: str,
+    start_date: datetime,
+    end_date: datetime,
     aoi_gdf: gpd.GeoDataFrame,
     aoi_id_col: str,
     land_mask: gpd.GeoDataFrame,
