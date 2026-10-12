@@ -1,3 +1,5 @@
+from unittest.mock import MagicMock
+
 import pytest
 import torch
 
@@ -33,8 +35,13 @@ def test_step():
         color_codes=[[0, 0, 0], [255, 0, 0]],
     )
 
+    # Mock the logger because it has to run through a Pytorch Lightning Trainer
+    model.log = MagicMock()
+    model.log_dict = MagicMock()
+
+    # Before step, all metric values should not have been updated (with `update` or `forward`)
     for metric in model.metrics['test'].values():
-        assert torch.all(metric.compute() == 0) or torch.all(torch.isnan(metric.compute()))
+        assert not metric.update_called
 
     batch = {'x': torch.rand((2, 2, 256, 256)), 'y': torch.randint(0, 2, (2, 256, 256))}
 

@@ -161,7 +161,7 @@ LABELS_CORINE = [
 ]
 
 
-class TestImageryStore(ImageryStore):
+class MockImageryStore(ImageryStore):
     def __init__(self):
         self.last_start_date = None
         self.last_end_date = None
@@ -183,7 +183,7 @@ class TestImageryStore(ImageryStore):
         }, (512, 768)
 
 
-class TestOhsomeOps(OhsomeOps):
+class MockOhsomeOps(OhsomeOps):
     def __init__(self):
         # We currently requires OHSOME_BASE_URL env var to be set
         if os.environ['OHSOME_BASE_URL'] is None:
@@ -212,9 +212,9 @@ def hashable_osm_labels(labels: List[LabelDescriptor]) -> HashableDict:
 @pytest.fixture
 def mocked_client():
     client = TestClient(app)
-    app.state.imagery_store = TestImageryStore()
+    app.state.imagery_store = MockImageryStore()
     app.state.osm_labels = LABELS
-    app.state.osm = TestOhsomeOps()
+    app.state.osm = MockOhsomeOps()
     app.state.osm_lulc_mapping = hashable_osm_labels(LABELS)
     app.state.corine_labels = LABELS_CORINE
     app.state.osm_cmap = {0: (0, 0, 0)}

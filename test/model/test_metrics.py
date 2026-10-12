@@ -68,9 +68,10 @@ def test_confusion_matrix():
 def test_confusion_matrix_reset():
     cm = ConfusionMatrix2D(labels=['A', 'B', 'C'], task='multiclass', num_classes=3, normalize='true')
 
-    preds = torch.randint(0, 2, (2, 1024, 1024))
-    target = torch.randint(0, 2, (2, 1024, 1024))
+    preds = torch.randint(0, 3, (2, 1024, 1024))
+    target = torch.randint(0, 3, (2, 1024, 1024))
     cm.update(preds, target)
     assert not torch.all(cm.compute() == 0)
     cm.reset()
-    assert torch.all(cm.compute() == 0)
+    # The confusion matrix should be reset to zeros
+    assert torch.all(cm.cm.confmat == 0)
