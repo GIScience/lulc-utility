@@ -8,7 +8,7 @@ unit_tests:
   stage: test
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == 'push'
+    - if: $CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "push"
   image:
     name: ghcr.io/astral-sh/uv:0.12-debian
   variables:
@@ -20,11 +20,12 @@ unit_tests:
     paths:
       - $PRE_COMMIT_HOME
       - UV_CACHE_DIR
+      - .venv
   before_script:
     - uv sync --locked --all-extras
   script:
+    - uv run pytest -x --cov --cov-report term --cov-report xml:coverage.xml
     - uv run pre-commit run --all-files
-    - uv run pytest --cov --cov-report term --cov-report xml:coverage.xml
     - uv cache prune --ci
   coverage: '/TOTAL.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
   artifacts:
@@ -41,14 +42,15 @@ test_coverage_threshold:
     - unit_tests
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == 'push'
+    - if: $CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "push"
   image:
-    name: python:3.13.16
+    name: python:3.13
   before_script:
     - apt-get update && apt-get install -y bc
   script:
     - coverage="$(grep -oP '<coverage[^>]+line-rate="\K[0-9.]+' "coverage.xml")"
-    - if (( $(echo "$coverage < 0.8" | bc -l) )); then
+    - |
+      if (( $(echo "$coverage < 0.8" | bc -l) )); then
         echo "Code coverage is only $(echo "$coverage*100" | bc)%. We recommend a minimum of 80%." && exit 1;
       else
         exit 0;

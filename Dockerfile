@@ -21,6 +21,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     apt-get update && apt-get install -y --no-install-recommends git
 
+# Workdir in build image and deployment image must be equal
 WORKDIR /home/lulc
 
 # Install project dependencies
@@ -60,6 +61,7 @@ USER $USER
 ENV WD=/home/lulc
 WORKDIR $WD
 
+# Copy the compiled project from the builder
 COPY --from=builder --chown=$USER $WD $WD
 ENV PATH="$WD/.venv/bin:$PATH"
 
