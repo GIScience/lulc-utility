@@ -1,7 +1,7 @@
 import logging
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import mlflow
 import numpy as np
@@ -15,12 +15,14 @@ log = logging.getLogger(__name__)
 class MLflowModelRegistry:
     """
     Enables interaction with a MLflow experiment tracking and model registry backend. Requires the
-    `MLFLOW_TRACKING_TOKEN` environment variable to be set, and the model to be registered in the model registry.
+    `MLFLOW_TRACKING_USERNAME` and `MLFLOW_TRACKING_PASSWORD` environment variables to be set, and the model to be
+    registered in the model registry.
     """
 
-    def __init__(self, tracking_uri: str, model_name: str, cache_dir: Path):
+    def __init__(self, tracking_uri: str, model_name: str, cache_dir: Path, workspace: Optional[str]):
         mlflow.set_tracking_uri(tracking_uri)
-        self.mlflow_client = mlflow.MlflowClient()
+        if workspace:
+            mlflow.set_workspace(workspace)
         self.model_name = model_name
         self.cache_dir = cache_dir / 'ops' / model_name
         if not self.cache_dir.exists():
@@ -50,12 +52,12 @@ class MLflowModelRegistry:
 
         log.info(f'Model has been uploaded to run {run_id}. Visit the UI to promote the run to a model.')
 
-    def download_model(self, model_version: str = 'latest') -> Path:
-        """Download the requested model_version from the GitLab model registry and return the path to the downloaded
+    def download_model(self, model_alias: str = 'production') -> Path:
+        """Download the requested model_alias from the model registry and return the path to the downloaded
         ONNX model file.
         """
-        model_path = self.cache_dir / model_version
+        model_path = self.cache_dir / model_alias
         os.makedirs(model_path, exist_ok=True)
 
-        onnx_model = mlflow.onnx.load_model(f'models:/{self.model_name}/{model_version}', dst_path=model_path)
+        onnx_model = mlflow.onnx.load_model(f'models:/{self.model_name}@{model_alias}', dst_path=model_path)
         return onnx_model.SerializeToString()

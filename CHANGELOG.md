@@ -15,6 +15,8 @@ and this project mostly adheres to [Semantic Versioning](https://semver.org/spec
 
 - ohsome components now use API v2, via
   ohsome_py2 ([#107](https://gitlab.heigit.org/climate-action/utilities/lulc-utility/-/work_items/107))
+- MLflow model registry now uses features from mlflow
+  v3 ([#102](https://gitlab.heigit.org/climate-action/utilities/lulc-utility/-/work_items/102))
 - improvements to `compute_area_descriptor` script to include better logging and visualisation of collected area, and
   option to provide a custom AOI name.
 

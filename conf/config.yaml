@@ -23,7 +23,8 @@ cache:
   apply: False
 
 mlflow_registry:
-  tracking_uri: https://gitlab.heigit.org/api/v4/projects/750/ml/mlflow/
+  tracking_uri: ${oc.env:MLFLOW_TRACKING_URI}
+  workspace: ${oc.env:MLFLOW_WORKSPACE}
 
 # Extra (generic) training config
 environment:

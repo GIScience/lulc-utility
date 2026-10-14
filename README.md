@@ -48,23 +48,7 @@ Any environment variables that include special characters must be wrapped in sin
 There are many more configuration files available in [`/conf/`](/conf/).
 Visit [`/conf/config.yaml`](/conf/config.yaml) to review and modify the configuration as required.
 Note that the config under `train` relates to training-specific configuration, while the config under `serve` is used
-by the inference API and should only be modified with caution.
-
-### Model Registry
-
-The utility is currently configured to use the model registry and experiment tracking
-of [GitLab](https://gitlab.heigit.org/climate-action/utilities/lulc-utility/-/ml/models).
-To work with this backend, you need to configure the tracking URI and tracking token.
-
-The **tracking URI** is set in the config files, and is specific to this repository in GitLab.
-As long as you are working in **this** repository, you can use the default tracking URI.
-If you clone this to another location, or want to store your models in another repository, you should get the
-appropriate tracking URI on GitLab by going to _Deploy > Model Registry > Create/Import Model > Import model using
-MLflow_ and copying the displayed `MLFLOW_TRACKING_URI`.
-
-The **tracking token** must be set as an environment variable, `MLFLOW_TRACKING_TOKEN`.
-To create a tracking token, in GitLab go to _Your avatar (top right) > Preferences > Personal access tokens > Add new
-token_ and create a token with `api` access.
+by the inference API and should be modified with caution.
 
 ## Development
 
@@ -78,16 +62,12 @@ Run `uv run pre-commit install` to activate them.
 
 ### Testing
 
-Run `uv run pytest` to run the tests.
-Note that the tests require **all** optional dependency groups.
+Run `uv run --all-extras pytest` to run the tests.
 
 ## Training
 
-**The following pipeline is for training models and requires the optional `train` dependencies.**
-
-OpenStreetMap LULC polygons are used as training labels via [this OSM2LULC mapping](data/label/label_v3.yaml).
-The model is trained locally and stored
-on [GitLab](https://gitlab.heigit.org/climate-action/utilities/lulc-utility/-/ml/models).
+OpenStreetMap LULC polygons are used as training labels via [this OSM2LULC mapping](conf/train/lulc/v1/label.yaml).
+The model is trained locally and tracked and stored in a MLflow registry.
 The feature space is constructed from [Sentinel 1, 2](https://sentinel.esa.int/web/sentinel/missions) and a DEM.
 
 The underlying semantic segmentation model is called [SegFormer](https://arxiv.org/abs/2105.15203).
@@ -113,7 +93,7 @@ To automatically prepare the descriptor, set relevant area parameters
 in `conf/train/<YOUR_FOLDER>/area_descriptor.yaml` and run the following command:
 
 ```shell
-uv run lulc/compute_area_descriptor.py
+uv run --extra train lulc/compute_area_descriptor.py
 ```
 
 The area descriptor (as a `csv`) and a visual representation of it (as `png`) will be saved
@@ -122,7 +102,7 @@ to [`data/area/`](data/area/).
 Optionally, to sanity check the imagery that would be sourced for each of the tiles, run:
 
 ```shell
-uv run --env-file .env lulc/save_imagery.py
+uv run --extra train --env-file .env lulc/save_imagery.py
 ```
 
 To save just a small sample area, you can also create a smaller area descriptor file and provide the optional command
@@ -141,7 +121,7 @@ Optionally, to export a single raster of your ground truth labels (for visual in
 training area, run:
 
 ```shell
-uv run --env-file .env lulc/export_osm_labels.py
+uv run --extra train --env-file .env lulc/export_osm_labels.py
 ```
 
 The raster files of ground truth labels will be saved to the cache_dir.
@@ -160,7 +140,7 @@ To calculate a reasonable set of normalisation values and class weights for new 
 script (note that this will load all of the images in your area descriptor so can take some time):
 
 ```shell
-uv run --env-file .env lulc/calculate_dataset_statistics.py
+uv run --extra train --env-file .env lulc/calculate_dataset_statistics.py
 ```
 
 The resulting image normalisation parameters and class weights must be copied to `data.yaml` before training.
@@ -170,29 +150,23 @@ The resulting image normalisation parameters and class weights must be copied to
 Finally, after setting up the configuration, training can be run with the following command:
 
 ```shell
-uv run --env-file .env lulc/train.py
+uv run --extra train --env-file .env lulc/train.py
 ```
 
 ## Serve
-
-**The following pipeline is for deploying the API and requires the optional `deploy` dependencies.**
 
 To serve an inference session for a model trained in this utility, we spawn a REST API locally.
 Before starting the API, the configuration in [`/conf/serve/`](/conf/serve/) must be updated for the model being hosted.
 The relevant config files can simply be copied from the matching training configuration, and then changing the
 `# @package train.XYZ` header to `# @package serve.XYZ`.
 
-Also choose the desired model version from
-the [Model Registry](https://gitlab.heigit.org/climate-action/utilities/lulc-utility/-/ml/models),
-e.g.: `1.0.0` and set the `MODEL_VERSION` in your `.env` file accordingly.
-
 Then start the application:
 
 ```shell
-uv run --env-file .env app/api.py
+uv run --extra deploy --env-file .env app/api.py
 ```
 
-> Go to [localhost:8000](http://localhost:8000/docs) to see the API in action.
+> Go to [localhost:8000/docs](http://localhost:8000/docs) to see the API in action.
 
 ### Docker
 

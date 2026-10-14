@@ -45,10 +45,11 @@ async def configure_dependencies(app: FastAPI):
 
     registry = MLflowModelRegistry(
         tracking_uri=cfg.mlflow_registry.tracking_uri,
+        workspace=cfg.mlflow_registry.workspace,
         model_name=cfg.serve.app.mlflow_registry.model_name,
         cache_dir=Path(cfg.cache.dir),
     )
-    onnx_model = registry.download_model(model_version=cfg.serve.app.mlflow_registry.model_version)
+    onnx_model = registry.download_model(model_alias=cfg.serve.app.mlflow_registry.model_alias)
 
     app.state.osm_labels = resolve_osm_labels(Path(cfg.serve.data.dir), cfg.serve.label)
     app.state.osm_cmap = dict(enumerate([d.color for d in app.state.osm_labels]))

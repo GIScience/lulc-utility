@@ -2,7 +2,7 @@
 
 # MLflow Model Registry config
 mlflow_registry:
-  model_name: test
+  experiment_name: test
 
 # Number of imagery input channels
 num_channels: 13

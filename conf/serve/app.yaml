@@ -6,9 +6,9 @@ port: 8000
 
 mlflow_registry:
   model_name: LULC
-  # Served model version, e.g. 1.0.0 or latest.
+  # Served model alias, e.g. production
   # If none it will be automatically resolved to latest released version.
-  model_version: ${oc.env:MODEL_VERSION,latest}
+  model_alias: ${oc.env:MODEL_ALIAS,production}
 
 # Number of predictions stored in an ephemeral cache.
 # Used as an idempotency mechanism.

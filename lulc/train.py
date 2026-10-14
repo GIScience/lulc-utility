@@ -43,12 +43,8 @@ def train(cfg: DictConfig) -> None:
         torch.use_deterministic_algorithms(True, warn_only=True)
 
     log.info(f'Model training initiated: {run_name}')
-    # GitLab implementation of MLflow can't link models to experiments. When models are registered, a run is
-    # automatically registered under the experiment name `[model]{model_name}`. We use this same syntax to force
-    # experiments and their registered models to at least exist in the same experiment space.
-    experiment_name = f'[model]{cfg.train.model.mlflow_registry.model_name}'
     mlflow_logger = MLFlowLogger(
-        experiment_name=experiment_name,
+        experiment_name=cfg.train.model.mlflow_registry.experiment_name,
         run_name=run_name,
         log_model=False,
         tracking_uri=cfg.mlflow_registry.tracking_uri,
