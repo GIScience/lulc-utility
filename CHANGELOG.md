@@ -9,6 +9,8 @@ and this project mostly adheres to [Semantic Versioning](https://semver.org/spec
 
 ## Fixed
 
+- SentinelHub operator now correctly checks the bbox width _and_ height instead of checking the width
+  twice ([#58](https://gitlab.heigit.org/climate-action/utilities/lulc-utility/-/work_items/58))
 - `compute_area_descriptor` now handles the config even if `target_aoi_ids` is not provided.
 
 ## Changed

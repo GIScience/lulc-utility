@@ -106,7 +106,7 @@ class SentinelHubOperator(ImageryStore):
         bbox = BBox(bbox=area_coords, crs=CRS.WGS84)
         bbox_width, bbox_height = bbox_to_dimensions(bbox, resolution=resolution)
 
-        if bbox_width > 2500 or bbox_width > 2500:
+        if bbox_width > 2500 or bbox_height > 2500:
             raise OperatorValidationError(
                 'Area (after edge correction buffer) exceeds processing limit: 2500 px x 2500 px'
             )
