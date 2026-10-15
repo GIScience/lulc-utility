@@ -125,7 +125,7 @@ def __compute_raster_response(result: ProcessingResult, body: LulcWorkUnit, requ
                 dst.write(ch_data, ch_idx)
 
         masked_image, out_transform = mask(dst, shapes=[result.clip_geometry], crop=True)
-        out_profile = dst.profile.copy()
+        out_profile = dst.meta.copy()
 
     out_profile.update(
         {
@@ -137,13 +137,14 @@ def __compute_raster_response(result: ProcessingResult, body: LulcWorkUnit, requ
     )
 
     with rasterio.open(file_path, 'w', **out_profile) as dst:
-        dst.write(masked_image)
-
+        # Write the colormap first because GDAL expects it before writing the data
         if write_colormap:
             if body.fusion_mode == FusionMode.ONLY_CORINE:
                 dst.write_colormap(1, request.app.state.corine_cmap)
             else:
                 dst.write_colormap(1, request.app.state.osm_cmap)
+
+        dst.write(masked_image)
 
     return GeoTiffResponse(
         file_path,
