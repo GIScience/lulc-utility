@@ -15,6 +15,7 @@ from starlette.requests import Request
 from starlette.responses import FileResponse, Response
 
 from app.process import FusionMode
+from lulc.data.label import NODATA_DESCRIPTOR
 
 
 class LulcWorkUnit(BaseModel):
@@ -99,25 +100,29 @@ class ProcessingResult:
     clip_geometry: Polygon
 
 
-def __compute_raster_response(result: ProcessingResult, body: LulcWorkUnit, request: Request, write_colormap=True):
+def __generate_raster_response(
+    result: ProcessingResult, body: LulcWorkUnit, request: Request, write_colormap=True
+) -> GeoTiffResponse:
     file_uuid = uuid.uuid4()
-    file_path = Path(f'/tmp/{file_uuid}.tiff')
+    file_path = Path(f'/tmp/tmp_raster_response_file_{file_uuid}.tiff')
 
     def unlink():
         file_path.unlink()
 
-    with rasterio.open(
-        file_path,
-        mode='w+',
-        driver='GTiff',
-        height=result.height,
-        width=result.width,
-        count=1 if len(result.payload.shape) == 2 else result.payload.shape[0],
-        dtype=result.payload.dtype,
-        crs=CRS.from_string('EPSG:4326'),
-        nodata=None,
-        transform=rasterio.transform.from_bounds(*result.area_coords, width=result.width, height=result.height),
-    ) as dst:
+    n_layers = 1 if len(result.payload.shape) == 2 else result.payload.shape[0]
+    tmp_transform = rasterio.transform.from_bounds(*result.area_coords, width=result.width, height=result.height)
+    nodata = NODATA_DESCRIPTOR.raster_value
+    tmp_file_profile = {
+        'driver': 'COG',
+        'height': result.height,
+        'width': result.width,
+        'count': n_layers,
+        'dtype': result.payload.dtype,
+        'crs': CRS.from_string('EPSG:4326'),
+        'nodata': nodata,
+        'transform': tmp_transform,
+    }
+    with rasterio.open(file_path, **tmp_file_profile, mode='w+') as dst:
         if len(result.payload.shape) == 2:
             dst.write(result.payload, 1)
         else:
@@ -125,18 +130,17 @@ def __compute_raster_response(result: ProcessingResult, body: LulcWorkUnit, requ
                 dst.write(ch_data, ch_idx)
 
         masked_image, out_transform = mask(dst, shapes=[result.clip_geometry], crop=True)
-        out_profile = dst.meta.copy()
 
+    out_profile = tmp_file_profile.copy()
     out_profile.update(
         {
-            'driver': 'GTiff',
             'height': masked_image.shape[1],
             'width': masked_image.shape[2],
             'transform': out_transform,
         }
     )
 
-    with rasterio.open(file_path, 'w', **out_profile) as dst:
+    with rasterio.open(file_path, **out_profile, mode='w') as dst:
         # Write the colormap first because GDAL expects it before writing the data
         if write_colormap:
             if body.fusion_mode == FusionMode.ONLY_CORINE:

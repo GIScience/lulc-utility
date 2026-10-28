@@ -62,6 +62,13 @@ BACKGROUND_DESCRIPTOR = LabelDescriptor(
     color=(0, 0, 0),
     description='areas which class cannot be predicted with a required certainty score',
 )
+NODATA_DESCRIPTOR = LabelDescriptor(
+    name='nodata',
+    raster_value=255,
+    color=(255, 255, 255),
+    description='areas with no data',
+)
+BASE_DESCRIPTOR = [BACKGROUND_DESCRIPTOR, NODATA_DESCRIPTOR]
 
 
 def hex_to_rgb_color(color: str) -> Tuple[int, int, int]:
@@ -75,7 +82,7 @@ def resolve_osm_labels(data_dir: Path, label_filter: DictConfig) -> List[LabelDe
     labels_descriptor['raster_value'] = pd.RangeIndex(1, len(labels_descriptor) + 1)
     labels_descriptor['color_code'] = labels_descriptor['color_code'].apply(hex_to_rgb_color).values
     labels_descriptor = labels_descriptor.rename(columns={'color_code': 'color'})
-    return [BACKGROUND_DESCRIPTOR] + [LabelDescriptor(**row) for _, row in labels_descriptor.iterrows()]
+    return [LabelDescriptor(**row) for _, row in labels_descriptor.iterrows()] + BASE_DESCRIPTOR
 
 
 def resolve_corine_labels(data_dir: Path, label_filter: DictConfig) -> List[LabelDescriptor]:
@@ -83,4 +90,4 @@ def resolve_corine_labels(data_dir: Path, label_filter: DictConfig) -> List[Labe
 
     labels_descriptor['raster_value'] = pd.RangeIndex(1, len(labels_descriptor) + 1)
     labels_descriptor['color'] = labels_descriptor['color'].apply(hex_to_rgb_color).values
-    return [BACKGROUND_DESCRIPTOR] + [LabelDescriptor(**row) for _, row in labels_descriptor.iterrows()]
+    return [LabelDescriptor(**row) for _, row in labels_descriptor.iterrows()] + BASE_DESCRIPTOR

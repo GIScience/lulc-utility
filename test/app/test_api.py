@@ -6,8 +6,10 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 import pytest
+import rasterio
 from fastapi.testclient import TestClient
 from onnxruntime import InferenceSession
+from rasterio import MemoryFile
 from tifffile import imread
 
 from app.api import app
@@ -258,11 +260,14 @@ def test_segment_preview(mocked_client, request_body, expected_start_date, expec
 
 def test_segment_image(mocked_client):
     response = mocked_client.post('/segment', json=TEST_JSON_start_end)
-    response_data = imread(io.BytesIO(response.content))
     assert response.status_code == 200
     assert response.headers['content-type'] == 'image/geotiff'
-    assert response_data.shape == (498, 746)
-    assert response_data.sum() > 0
+
+    with rasterio.open(MemoryFile(io.BytesIO(response.content)), 'r') as response_data:
+        assert response_data.shape == (498, 746)
+        assert response_data.read().sum() > 0
+        assert response_data.profile.get('tiled')
+        assert response_data.nodata == 255.0
 
 
 def test_segment_describe(mocked_client):
@@ -291,5 +296,5 @@ def test_uncertainty_image(mocked_client):
     response_data = imread(io.BytesIO(response.content))
     assert response.status_code == 200
     assert response.headers['content-type'] == 'image/geotiff'
-    assert response_data.shape == (498, 746, 2)
+    assert response_data.shape == (2, 498, 746)
     assert response_data.sum() > 0

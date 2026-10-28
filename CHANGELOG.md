@@ -7,6 +7,13 @@ and this project mostly adheres to [Semantic Versioning](https://semver.org/spec
 
 ## [Unreleased](https://gitlab.heigit.org/climate-action/utilities/lulc-utility/-/compare/1.3.0...main)
 
+### Added
+
+- a nodata value to segmentation results
+  ([#105](https://gitlab.heigit.org/climate-action/utilities/lulc-utility/-/work_items/105))
+- tiling to segmentation results
+  ([#109](https://gitlab.heigit.org/climate-action/utilities/lulc-utility/-/work_items/109))
+
 ## [1.3.0](https://gitlab.heigit.org/climate-action/utilities/lulc-utility/-/releases/1.3.0) - 2026-10-19
 
 ## Fixed

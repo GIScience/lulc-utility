@@ -52,10 +52,10 @@ async def configure_dependencies(app: FastAPI):
     onnx_model = registry.download_model(model_alias=cfg.serve.app.mlflow_registry.model_alias)
 
     app.state.osm_labels = resolve_osm_labels(Path(cfg.serve.data.dir), cfg.serve.label)
-    app.state.osm_cmap = dict(enumerate([d.color for d in app.state.osm_labels]))
+    app.state.osm_cmap = {d.raster_value: d.color for d in app.state.osm_labels}
 
     app.state.corine_labels = resolve_corine_labels(Path(cfg.serve.data.dir), cfg.serve.label)
-    app.state.corine_cmap = dict(enumerate([d.color for d in app.state.corine_labels]))
+    app.state.corine_cmap = {d.raster_value: d.color for d in app.state.corine_labels}
 
     options = SessionOptions()
     options.enable_mem_pattern = False

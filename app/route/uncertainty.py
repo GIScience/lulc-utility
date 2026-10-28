@@ -7,7 +7,7 @@ from sentinelhub import BBox, to_utm_bbox
 from starlette.requests import Request
 
 from app.process import FusionMode
-from app.route.common import ImageResponse, LulcWorkUnit, ProcessingResult, __compute_raster_response
+from app.route.common import ImageResponse, LulcWorkUnit, ProcessingResult, __generate_raster_response
 from app.stats import tta_uncertainty
 
 router = APIRouter(prefix='/uncertainty')
@@ -20,7 +20,7 @@ router = APIRouter(prefix='/uncertainty')
 async def uncertainty_compute(body: LulcWorkUnit, request: Request):
     if body.fusion_mode == FusionMode.ONLY_MODEL:
         result = __uncertainty(body, request)
-        return __compute_raster_response(result, body, request, write_colormap=False)
+        return __generate_raster_response(result, body, request, write_colormap=False)
     else:
         raise HTTPException(
             status_code=400,

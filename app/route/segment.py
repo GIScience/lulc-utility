@@ -13,7 +13,7 @@ from starlette.requests import Request
 from webcolors import rgb_to_hex
 
 from app.process import FusionMode, analyse
-from app.route.common import GeoTiffResponse, ImageResponse, LulcWorkUnit, ProcessingResult, __compute_raster_response
+from app.route.common import GeoTiffResponse, ImageResponse, LulcWorkUnit, ProcessingResult, __generate_raster_response
 from lulc.data.label import HashableDict, LabelDescriptor
 
 router = APIRouter(prefix='/segment')
@@ -62,7 +62,7 @@ class LabelResponse(BaseModel):
 async def segment_compute(body: LulcWorkUnit, request: Request) -> GeoTiffResponse:
     log.info(f'Creating segmentation for {body}')
     result = __analyse(body, request)
-    return __compute_raster_response(result, body, request)
+    return __generate_raster_response(result, body, request)
 
 
 def __analyse(body: LulcWorkUnit, request: Request) -> ProcessingResult:
@@ -110,6 +110,7 @@ async def segment_preview(body: LulcWorkUnit, request: Request) -> ImageResponse
     labels = (
         request.app.state.corine_labels if body.fusion_mode == FusionMode.ONLY_CORINE else request.app.state.osm_labels
     )
+    labels.sort(key=lambda label: label.raster_value)
 
     image = np.array([d.color for d in labels], dtype=np.uint8)[result.payload]
     patches = [Patch(color=rgb_to_hex(d.color), label=d.name) for d in labels]

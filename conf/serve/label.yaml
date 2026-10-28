@@ -161,6 +161,3 @@ corine:
   - name: sea_and_ocean
     color: '#e6f2ff'
     osm_ref: water
-  - name: nodata
-    color: '#ffffff'
-    osm_ref:
