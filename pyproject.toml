@@ -9,7 +9,7 @@ authors = [
 ]
 readme = "README.md"
 repository = "https://gitlab.heigit.org/climate-action/utilities/lulc-utility.git"
-requires-python = ">=3.13,<3.14"
+requires-python = ">=3.14,<3.15"
 dependencies = [
     "geocube>=0.7.1,<1",
     "geopandas>=1.1.1,<2",
