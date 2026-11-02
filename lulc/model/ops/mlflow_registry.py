@@ -59,5 +59,7 @@ class MLflowModelRegistry:
         model_path = self.cache_dir / model_alias
         os.makedirs(model_path, exist_ok=True)
 
-        onnx_model = mlflow.onnx.load_model(f'models:/{self.model_name}@{model_alias}', dst_path=model_path)
+        model_uri = f'models:/{self.model_name}@{model_alias}'
+        log.info(f'Downloading {model_uri} from {mlflow.get_tracking_uri()}')
+        onnx_model = mlflow.onnx.load_model(model_uri=model_uri, dst_path=model_path)
         return onnx_model.SerializeToString()

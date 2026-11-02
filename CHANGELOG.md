@@ -14,6 +14,10 @@ and this project mostly adheres to [Semantic Versioning](https://semver.org/spec
 - tiling to segmentation results
   ([#109](https://gitlab.heigit.org/climate-action/utilities/lulc-utility/-/work_items/109))
 
+### Changed
+
+- moved from Python 3.13 to 3.14
+
 ## [1.3.0](https://gitlab.heigit.org/climate-action/utilities/lulc-utility/-/releases/1.3.0) - 2026-10-19
 
 ## Fixed

@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=python:3.13-slim-bookworm
+ARG BASE_IMAGE=python:3.14-slim-bookworm
 
 # Build stage: having a build stage means temp/cache files from the build aren't persisted in the final image
 FROM $BASE_IMAGE AS builder
@@ -9,7 +9,7 @@ ARG HOME=/root
 ARG UV_HOME=$HOME/uv
 RUN --mount=type=cache,target=$HOME/.cache/pip \
     python3 -m venv $UV_HOME && \
-    $UV_HOME/bin/pip install uv==0.12.*
+    $UV_HOME/bin/pip install uv==0.13.*
 ENV PATH="$UV_HOME/bin:$PATH"
 
 # Copy from the cache instead of linking (required for using cache mount)
